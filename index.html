@@ -1,0 +1,179 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Camera Jump Dino Game</title>
+  <style>
+    body { margin:0; background:#f9fafb; font-family:Arial; display:flex; gap:20px; justify-content:center; align-items:flex-start; padding:20px; }
+    canvas { border:1px solid #ccc; background:#000; }
+    #status { font-weight:600; margin-bottom:8px; }
+    #side { display:flex; flex-direction:column; align-items:center; }
+  </style>
+</head>
+<body>
+  <div id="side">
+    <div id="status">Starting camera…</div>
+    <canvas id="videoCanvas" width="320" height="240"></canvas>
+  </div>
+  <canvas id="game" width="800" height="200"></canvas>
+
+  <!-- TensorFlow.js + MoveNet -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-core"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-converter"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-webgl"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection"></script>
+
+  <script>
+  const statusEl = document.getElementById("status");
+  const gameCanvas = document.getElementById("game");
+  const gameCtx = gameCanvas.getContext("2d");
+  const videoCanvas = document.getElementById("videoCanvas");
+  const vctx = videoCanvas.getContext("2d");
+
+  let detector, video, calibrated=false, baselineY=null, smoothedY=null;
+  let lastJump=0, score=0, gameOver=false;
+  let currentDelta = 0, thresholdLineY = null, keypoints=[];
+
+  // Dino state
+  const dino = { x:60, y:150, w:40, h:40, vy:0, onGround:true };
+  const gravity=0.8, jumpV=-14;
+  let obstacles=[], lastSpawn=0;
+
+  async function init() {
+    // Webcam setup
+    video = document.createElement("video");
+    video.width=320; video.height=240;
+    video.autoplay=false; video.playsinline=true; video.muted=true;
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({video:true});
+      video.srcObject=stream;
+      await video.play();   // ✅ Important
+      statusEl.textContent="Camera ready, loading model…";
+    } catch (e) {
+      statusEl.textContent="Error accessing camera: "+e;
+      return;
+    }
+
+    // Load MoveNet
+    detector = await poseDetection.createDetector(
+      poseDetection.SupportedModels.MoveNet,
+      {modelType:"SinglePose.Lightning"}
+    );
+
+    statusEl.textContent="Calibrating (stand still 2s)…";
+    setTimeout(()=>{ calibrated=true; statusEl.textContent="Ready! Jump above the red line!"; },2000);
+
+    requestAnimationFrame(loop);
+  }
+
+  async function detectJump(ts) {
+    const poses = await detector.estimatePoses(video);
+    if(!poses.length) return false;
+    keypoints = poses[0].keypoints;
+
+    // Average hips + shoulders
+    const centerY = (keypoints[11].y + keypoints[12].y + keypoints[5].y + keypoints[6].y)/4;
+    if(smoothedY==null) smoothedY=centerY;
+    smoothedY = smoothedY*0.8 + centerY*0.2;
+
+    if(!baselineY) baselineY=smoothedY;
+    if(!calibrated) return false;
+
+    currentDelta = baselineY - smoothedY;
+    const threshold = 60; // px above baseline
+    thresholdLineY = baselineY - threshold;
+    const now=Date.now();
+    const didJump = (currentDelta>threshold && now-lastJump>600);
+    if(didJump) lastJump=now;
+    return didJump;
+  }
+
+  function drawVideoOverlay(){
+    // Always draw video
+    vctx.drawImage(video,0,0,videoCanvas.width,videoCanvas.height);
+
+    // Debug: mark if video is running
+    if(video.readyState>=2){
+      vctx.fillStyle="rgba(0,255,0,0.3)";
+      vctx.fillRect(0,0,80,20);
+      vctx.fillStyle="black";
+      vctx.font="12px Arial";
+      vctx.fillText("Video ok",5,14);
+    }
+
+    // Draw threshold line
+    if(thresholdLineY){
+      const lineY = thresholdLineY*(videoCanvas.height/video.videoHeight);
+      vctx.strokeStyle="red";
+      vctx.beginPath();
+      vctx.moveTo(0,lineY);
+      vctx.lineTo(videoCanvas.width,lineY);
+      vctx.stroke();
+    }
+
+    // Draw keypoints
+    vctx.fillStyle="lime";
+    keypoints.forEach(k=>{
+      if(k.score>0.3){
+        vctx.beginPath();
+        vctx.arc(k.x*(videoCanvas.width/video.videoWidth),
+                 k.y*(videoCanvas.height/video.videoHeight),
+                 4,0,2*Math.PI);
+        vctx.fill();
+      }
+    });
+
+    // Show delta
+    vctx.fillStyle="yellow";
+    vctx.font="14px Arial";
+    vctx.fillText("delta:"+currentDelta.toFixed(1),10,videoCanvas.height-10);
+  }
+
+  function update(dt) {
+    dino.vy+=gravity;
+    dino.y+=dino.vy;
+    if(dino.y>=150){ dino.y=150; dino.vy=0; dino.onGround=true; }
+
+    obstacles.forEach(ob=>ob.x-=6);
+    obstacles=obstacles.filter(ob=>ob.x+ob.w>0);
+
+    if(Date.now()-lastSpawn>1500){
+      obstacles.push({x:800,y:160,w:20,h:40});
+      lastSpawn=Date.now();
+    }
+
+    for(let ob of obstacles){
+      if(!(ob.x>dino.x+dino.w || ob.x+ob.w<dino.x || ob.y>dino.y+dino.h)){
+        gameOver=true;
+        statusEl.textContent="Game Over (refresh to retry)";
+      }
+    }
+    score+=dt*0.01;
+  }
+
+  function drawGame() {
+    gameCtx.clearRect(0,0,800,200);
+    gameCtx.fillStyle="#eee"; gameCtx.fillRect(0,190,800,10);
+    gameCtx.fillStyle="#000"; gameCtx.fillRect(dino.x,dino.y,dino.w,dino.h);
+    gameCtx.fillStyle="#444";
+    obstacles.forEach(ob=>gameCtx.fillRect(ob.x,ob.y,ob.w,ob.h));
+    gameCtx.fillStyle="#333"; gameCtx.font="16px Arial";
+    gameCtx.fillText("Score: "+Math.floor(score),700,20);
+  }
+
+  async function loop(ts){
+    const didJump=await detectJump(ts);
+    if(didJump && dino.onGround && !gameOver){
+      dino.vy=jumpV; dino.onGround=false;
+    }
+    if(!gameOver) update(16);
+    drawGame();
+    drawVideoOverlay();
+    requestAnimationFrame(loop);
+  }
+
+  init();
+  </script>
+</body>
+</html>
