@@ -11,6 +11,7 @@ import {
   replaceCard,
   discardDrawn,
   snap,
+  reserveSnap,
   abilityAction,
   buildClientState,
 } from '../game/engine';
@@ -179,6 +180,38 @@ export function registerHandlers(io: Server, socket: Socket): void {
 
     room.gameState = result;
     broadcastGameState(io, room.gameState);
+  });
+
+  // Snap intent — reserves opponent's card before the player picks which card to give
+  socket.on('snap_intent', (data: { targetPlayerId: string; targetCardIndex: number }) => {
+    const room = getRoom(socket.data.roomCode);
+    if (!room || !room.gameState) return;
+
+    const result = reserveSnap(room.gameState, socket.data.playerId, data.targetPlayerId, data.targetCardIndex);
+    if (result.success) {
+      room.gameState = result.state;
+      // Auto-expire reservation after 5s in case the player never follows through
+      const playerId = socket.data.playerId;
+      setTimeout(() => {
+        const r = getRoom(socket.data.roomCode);
+        if (!r?.gameState) return;
+        const res = r.gameState.snapReservation;
+        if (res && res.byPlayerId === playerId && res.targetPlayerId === data.targetPlayerId && res.targetCardIndex === data.targetCardIndex) {
+          r.gameState = { ...r.gameState, snapReservation: undefined };
+        }
+      }, 5000);
+    }
+    socket.emit('snap_intent_result', { success: result.success, message: result.message });
+  });
+
+  // Cancel a pending snap intent (player dismissed the card picker)
+  socket.on('snap_intent_cancel', () => {
+    const room = getRoom(socket.data.roomCode);
+    if (!room?.gameState) return;
+    const res = room.gameState.snapReservation;
+    if (res && res.byPlayerId === socket.data.playerId) {
+      room.gameState = { ...room.gameState, snapReservation: undefined };
+    }
   });
 
   // Snap

@@ -39,6 +39,7 @@ export default function GameBoard({ gameState, myPlayerId, roomCode, chatMessage
   const [snapMessage, setSnapMessage] = useState<{ text: string; success: boolean } | null>(null);
   const [snapAnim, setSnapAnim] = useState<SnapAnimation | null>(null);
   const peekTimers = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
+  const pendingSnapIntentRef = useRef<PendingOpponentSnap | null>(null);
   const socket = getSocket();
 
   useEffect(() => {
@@ -73,13 +74,25 @@ export default function GameBoard({ gameState, myPlayerId, roomCode, chatMessage
       setTimeout(() => setSnapAnim(null), 900);
     };
 
+    const handleSnapIntentResult = ({ success, message }: { success: boolean; message: string }) => {
+      if (success && pendingSnapIntentRef.current) {
+        setPendingOpponentSnap(pendingSnapIntentRef.current);
+      } else if (!success) {
+        setSnapMessage({ text: message, success: false });
+        setTimeout(() => setSnapMessage(null), 2500);
+      }
+      pendingSnapIntentRef.current = null;
+    };
+
     socket.on('peek_reveal', handlePeekReveal);
     socket.on('snap_result', handleSnapResult);
     socket.on('snap_animation', handleSnapAnimation);
+    socket.on('snap_intent_result', handleSnapIntentResult);
     return () => {
       socket.off('peek_reveal', handlePeekReveal);
       socket.off('snap_result', handleSnapResult);
       socket.off('snap_animation', handleSnapAnimation);
+      socket.off('snap_intent_result', handleSnapIntentResult);
     };
   }, [socket]);
 
@@ -129,11 +142,12 @@ export default function GameBoard({ gameState, myPlayerId, roomCode, chatMessage
     }
   };
 
-  // Double-click opponent card → snap attempt (then must pick card to give)
+  // Double-click opponent card → reserve snap server-side first, then show card picker on confirmation
   const handleOpponentCardDoubleClick = (playerId: string, playerName: string, cardIndex: number) => {
     if (!canSnap) return;
     if (playerId === cambioCalledBy) return; // frozen
-    setPendingOpponentSnap({ targetPlayerId: playerId, targetCardIndex: cardIndex, targetPlayerName: playerName });
+    pendingSnapIntentRef.current = { targetPlayerId: playerId, targetCardIndex: cardIndex, targetPlayerName: playerName };
+    socket.emit('snap_intent', { targetPlayerId: playerId, targetCardIndex: cardIndex });
   };
 
   const handleDrawDeck = () => socket.emit('draw_card', { source: 'deck' });
@@ -180,7 +194,7 @@ export default function GameBoard({ gameState, myPlayerId, roomCode, chatMessage
       {pendingOpponentSnap && (
         <div className="snap-pick-prompt">
           <span>Snapping <strong>{pendingOpponentSnap.targetPlayerName}</strong>'s card — pick one of your cards to give them:</span>
-          <button className="btn btn-ghost btn-sm" onClick={() => setPendingOpponentSnap(null)}>Cancel</button>
+          <button className="btn btn-ghost btn-sm" onClick={() => { socket.emit('snap_intent_cancel'); setPendingOpponentSnap(null); }}>Cancel</button>
         </div>
       )}
 

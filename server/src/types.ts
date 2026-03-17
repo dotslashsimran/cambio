@@ -60,6 +60,13 @@ export interface ReplaceInfo {
   cardIndex: number;
 }
 
+export interface SnapReservation {
+  byPlayerId: string;
+  targetPlayerId: string;
+  targetCardIndex: number;
+  expiresAt: number;
+}
+
 export interface ServerGameState {
   id: string;
   roomCode: string;
@@ -75,6 +82,7 @@ export interface ServerGameState {
   abilityState: AbilityState | null;
   lastSwap?: SwapInfo;
   lastReplace?: ReplaceInfo;
+  snapReservation?: SnapReservation;
 }
 
 // ---- Client-facing types ----

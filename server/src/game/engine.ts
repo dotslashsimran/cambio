@@ -1,4 +1,4 @@
-import { Card, ServerGameState, ServerPlayer, AbilityState, AbilityStep, ClientGameState, ClientPlayer, ClientCard, ClientAbilityState, SwapInfo, ReplaceInfo } from '../types';
+import { Card, ServerGameState, ServerPlayer, AbilityState, AbilityStep, ClientGameState, ClientPlayer, ClientCard, ClientAbilityState, SwapInfo, ReplaceInfo, SnapReservation } from '../types';
 import { createDeck } from './deck';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -40,7 +40,6 @@ export function createGame(
     drawnFrom: null,
     cambioCalledBy: null,
     lastTurnsLeft: 0,
-    snapWindow: null,
     abilityState: null,
   };
 }
@@ -237,6 +236,47 @@ export function discardDrawn(
   return newState;
 }
 
+// Reserve an opponent's card for snapping. Blocks others from snapping the same card.
+export function reserveSnap(
+  state: ServerGameState,
+  playerId: string,
+  targetPlayerId: string,
+  targetCardIndex: number
+): { state: ServerGameState; success: boolean; message: string } {
+  if (state.phase !== 'playing' && state.phase !== 'last_turns') {
+    return { state, success: false, message: 'Cannot snap right now' };
+  }
+  if (state.discardPile.length === 0) {
+    return { state, success: false, message: 'No card on discard pile' };
+  }
+  if (state.cambioCalledBy) {
+    if (playerId === state.cambioCalledBy) {
+      return { state, success: false, message: 'Your cards are frozen — you called Cambio!' };
+    }
+    if (targetPlayerId === state.cambioCalledBy) {
+      return { state, success: false, message: 'Those cards are frozen!' };
+    }
+  }
+  // Reject if another player already has an active reservation on this card
+  const existing = state.snapReservation;
+  if (
+    existing &&
+    existing.expiresAt > Date.now() &&
+    existing.targetPlayerId === targetPlayerId &&
+    existing.targetCardIndex === targetCardIndex &&
+    existing.byPlayerId !== playerId
+  ) {
+    return { state, success: false, message: 'Someone else is already snapping that card!' };
+  }
+  const reservation: SnapReservation = {
+    byPlayerId: playerId,
+    targetPlayerId,
+    targetCardIndex,
+    expiresAt: Date.now() + 5000,
+  };
+  return { state: { ...state, snapReservation: reservation }, success: true, message: 'Reserved' };
+}
+
 // Snap can be attempted any time during playing/last_turns by double-clicking a card.
 // targetPlayerId=null means snapping own card; otherwise snapping an opponent's card.
 // myCardIndex is the card the snapper gives away (only used for opponent snaps).
@@ -293,17 +333,30 @@ export function snap(
   } else {
     // Snapping an opponent's card
     if (targetCardIndex === null) {
-      return { state: applyPenalty(state, snappingPlayerId), success: false, message: `${snapper.name} snapped wrong — penalty card!` };
+      return { state: { ...applyPenalty(state, snappingPlayerId), snapReservation: undefined }, success: false, message: `${snapper.name} snapped wrong — penalty card!` };
     }
+
+    // Block if another player holds an active reservation on this card
+    const res = state.snapReservation;
+    if (
+      res &&
+      res.expiresAt > Date.now() &&
+      res.targetPlayerId === targetPlayerId &&
+      res.targetCardIndex === targetCardIndex &&
+      res.byPlayerId !== snappingPlayerId
+    ) {
+      return { state, success: false, message: `${snapper.name}: someone else is already snapping that card!` };
+    }
+
     const target = state.players.find(p => p.id === targetPlayerId);
     if (!target || targetCardIndex < 0 || targetCardIndex >= target.hand.length) {
-      return { state: applyPenalty(state, snappingPlayerId), success: false, message: `${snapper.name} snapped wrong — penalty card!` };
+      return { state: { ...applyPenalty(state, snappingPlayerId), snapReservation: undefined }, success: false, message: `${snapper.name} snapped wrong — penalty card!` };
     }
     const targetCard = target.hand[targetCardIndex];
     if (targetCard.value === discardValue) {
       // Target's card → discard pile; snapper gives myCardIndex card to target
       if (myCardIndex < 0 || myCardIndex >= snapper.hand.length) {
-        return { state: applyPenalty(state, snappingPlayerId), success: false, message: 'Invalid card to give — penalty!' };
+        return { state: { ...applyPenalty(state, snappingPlayerId), snapReservation: undefined }, success: false, message: 'Invalid card to give — penalty!' };
       }
       const cardToGive = snapper.hand[myCardIndex];
 
@@ -315,7 +368,6 @@ export function snap(
       const newTargetHand = target.hand.filter((_, i) => i !== targetCardIndex);
       newTargetHand.push(cardToGive);
       const newTargetKnown = remapKnownAfterRemove(target.knownCardIndices, targetCardIndex);
-      // target doesn't know the new card they received
 
       const updatedPlayers = state.players.map(p => {
         if (p.id === snappingPlayerId) return { ...snapper, hand: newSnapperHand, knownCardIndices: newSnapperKnown };
@@ -323,12 +375,12 @@ export function snap(
         return p;
       });
       return {
-        state: { ...state, players: updatedPlayers, discardPile: [...state.discardPile, targetCard] },
+        state: { ...state, players: updatedPlayers, discardPile: [...state.discardPile, targetCard], snapReservation: undefined },
         success: true,
         message: `${snapper.name} snapped ${target.name}'s card!`,
       };
     } else {
-      return { state: applyPenalty(state, snappingPlayerId), success: false, message: `${snapper.name} snapped wrong — penalty card!` };
+      return { state: { ...applyPenalty(state, snappingPlayerId), snapReservation: undefined }, success: false, message: `${snapper.name} snapped wrong — penalty card!` };
     }
   }
 }
