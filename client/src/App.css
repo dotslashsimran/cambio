@@ -2,6 +2,8 @@
 
 /* ─── Variables ─────────────────────────────── */
 :root {
+  color-scheme: dark;
+
   --bg:           #07080c;
   --surface:      #0d0f15;
   --felt:         #0b3a18;
@@ -980,18 +982,27 @@ body {
 .ability-player-select { display: flex; flex-direction: column; gap: 8px; }
 .ability-player-select select, select {
   padding: 10px 14px;
-  background: rgba(255,255,255,0.055);
+  background: #0d1117;
   border: 1px solid rgba(255,255,255,0.11);
   border-radius: var(--radius-sm);
-  color: white;
+  color: var(--text);
   font-size: 0.88rem;
   font-family: 'Inter', sans-serif;
   outline: none;
   width: 100%;
   cursor: pointer;
+  color-scheme: dark;
 }
 .ability-player-select select:focus, select:focus {
   border-color: rgba(196,154,50,0.5);
+  box-shadow: 0 0 0 2px rgba(196,154,50,0.1);
+}
+select option {
+  background: #0d1117;
+  color: var(--text);
+}
+select option:disabled {
+  color: rgba(239, 233, 216, 0.3);
 }
 .ability-actions { display: flex; gap: 10px; flex-wrap: wrap; }
 
