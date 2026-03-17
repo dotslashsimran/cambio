@@ -38,36 +38,8 @@ export default function AbilityModal({ gameState }: AbilityModalProps) {
   const opponents = players.filter(p => p.id !== myPlayerId);
   const isFrozen = (pid: string) => pid === cambioCalledBy;
 
-  if (!isMyAbility) {
-    const abilityOwner = players.find(p => p.isCurrentTurn);
-    const ownerName = abilityOwner?.name ?? 'Another player';
-
-    let actionDesc = 'using their ability...';
-    if (step === 'peek_own_select') actionDesc = 'choosing one of their own cards to peek at...';
-    else if (step === 'peek_own_reveal') {
-      const idx = abilityState.peekedOwnIndex;
-      actionDesc = idx !== undefined ? `peeking at their card in slot ${idx + 1}` : 'peeking at their own card...';
-    }
-    else if (step === 'peek_opp_select') actionDesc = 'choosing an opponent\'s card to peek at...';
-    else if (step === 'peek_opp_reveal') {
-      const oppName = players.find(p => p.id === abilityState.peekedOppPlayerId)?.name ?? 'someone';
-      const idx = abilityState.peekedOppIndex;
-      actionDesc = idx !== undefined ? `peeking at ${oppName}'s card in slot ${idx + 1}` : `peeking at ${oppName}'s card...`;
-    }
-    else if (step === 'jack_swap_decide') actionDesc = 'deciding whether to swap...';
-    else if (step === 'jack_swap_select_opp') actionDesc = 'choosing cards to swap...';
-    else if (step === 'queen_swap_select') actionDesc = 'choosing two cards to swap...';
-    else if (step === 'king_swap_select') actionDesc = 'choosing two cards to swap...';
-
-    return (
-      <div className="ability-modal-backdrop">
-        <div className="ability-modal">
-          <div className="ability-title">{ABILITY_NAMES[rank] || `Ability: ${rank}`}</div>
-          <div className="waiting-text"><strong>{ownerName}</strong> is {actionDesc}</div>
-        </div>
-      </div>
-    );
-  }
+  // Non-ability players: handled by AbilityDrawer + player badge — no blocking modal
+  if (!isMyAbility) return null;
 
   const emitAbility = (action: string, data: any = {}) => {
     socket.emit('ability_action', { action, data });

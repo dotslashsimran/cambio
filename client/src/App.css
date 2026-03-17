@@ -1263,3 +1263,147 @@ body {
   animation: card-flip-in 0.45s cubic-bezier(0.23, 1, 0.32, 1) both;
   transform-origin: center;
 }
+
+/* ─── Ability Drawer (left side panel) ─── */
+@keyframes drawer-slide-in {
+  from { transform: translateX(-100%); opacity: 0; }
+  to   { transform: translateX(0);     opacity: 1; }
+}
+
+.ability-drawer {
+  position: fixed;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 188px;
+  background: rgba(10, 13, 18, 0.92);
+  border: 1px solid rgba(42, 157, 88, 0.3);
+  border-left: 3px solid var(--success);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  padding: 14px 14px 14px 12px;
+  z-index: 200;
+  backdrop-filter: blur(16px);
+  box-shadow: 4px 0 32px rgba(0,0,0,0.6), 0 0 24px rgba(42,157,88,0.08);
+  animation: drawer-slide-in 0.3s cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+
+.ability-drawer-header {
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(42, 157, 88, 0.2);
+}
+
+.ability-drawer-label {
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--success);
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.ability-drawer-player {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ability-drawer-name {
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+
+.ability-drawer-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.ability-drawer-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.72rem;
+  transition: opacity 0.2s;
+}
+
+.ability-drawer-step .step-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.step-current {
+  color: var(--text);
+  font-weight: 600;
+}
+.step-current .step-dot {
+  background: var(--success);
+  box-shadow: 0 0 6px rgba(42, 157, 88, 0.8);
+}
+
+.step-done {
+  color: var(--text-muted);
+  opacity: 0.6;
+}
+.step-done .step-dot {
+  background: var(--text-muted);
+}
+
+.step-upcoming {
+  color: var(--text-muted);
+  opacity: 0.4;
+}
+.step-upcoming .step-dot {
+  background: transparent;
+  border: 1px solid var(--text-muted);
+}
+
+.ability-drawer-info {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(42, 157, 88, 0.15);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ability-drawer-info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.68rem;
+}
+
+.info-label {
+  color: var(--text-dim);
+}
+
+.info-value {
+  color: var(--success);
+  font-weight: 700;
+}
+
+/* ─── Ability badge on opponent player area ─── */
+@keyframes badge-fade-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.ability-badge {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--success);
+  background: rgba(42, 157, 88, 0.12);
+  border: 1px solid rgba(42, 157, 88, 0.3);
+  border-radius: var(--pill);
+  padding: 2px 8px;
+  margin-top: 4px;
+  white-space: nowrap;
+  animation: badge-fade-in 0.25s ease both;
+}

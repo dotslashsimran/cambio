@@ -5,6 +5,7 @@ import PlayerArea from './PlayerArea';
 import CardComponent from './CardComponent';
 import ActionPanel from './ActionPanel';
 import AbilityModal from './AbilityModal';
+import AbilityDrawer from './AbilityDrawer';
 import GameOver from './GameOver';
 
 interface GameBoardProps {
@@ -183,6 +184,10 @@ export default function GameBoard({ gameState, myPlayerId, roomCode, chatMessage
         </div>
       )}
 
+      {phase === 'ability' && abilityState && !abilityState.isMyAbility && (
+        <AbilityDrawer gameState={gameState} />
+      )}
+
       {/* Opponents */}
       <div className="opponents-area">
         {opponents.map(opp => {
@@ -192,6 +197,19 @@ export default function GameBoard({ gameState, myPlayerId, roomCode, chatMessage
           const oppPeekHighlight = abilityState && !abilityState.isMyAbility
             ? (abilityState.peekedOppPlayerId === opp.id ? (abilityState.peekedOppIndex ?? null) : null)
             : null;
+          let abilityBadge: string | undefined;
+          if (phase === 'ability' && abilityState && opp.isCurrentTurn) {
+            const s = abilityState.step;
+            if (s === 'peek_own_select') abilityBadge = 'Choosing a card to peek';
+            else if (s === 'peek_own_reveal') abilityBadge = 'Peeking their own card';
+            else if (s === 'peek_opp_select') abilityBadge = 'Choosing your card to peek';
+            else if (s === 'peek_opp_reveal') abilityBadge = 'Peeking a card';
+            else if (s === 'jack_swap_decide') abilityBadge = 'Deciding whether to swap';
+            else if (s === 'jack_swap_select_opp') abilityBadge = 'Choosing cards to swap';
+            else if (s === 'queen_swap_select') abilityBadge = 'Choosing two cards to swap';
+            else if (s === 'king_swap_select') abilityBadge = 'Choosing cards to swap';
+          }
+
           const oppSnapIdx = snapAnim?.snapperId === opp.id
             ? snapAnim.snapperCardIndex
             : snapAnim?.targetPlayerId === opp.id
@@ -211,6 +229,7 @@ export default function GameBoard({ gameState, myPlayerId, roomCode, chatMessage
               snapHighlightSuccess={snapAnim?.success ?? true}
               replacedCardIndex={oppReplaced}
               isFrozen={opp.id === cambioCalledBy}
+              abilityBadge={abilityBadge}
             />
           );
         })}

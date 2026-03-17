@@ -18,6 +18,7 @@ interface PlayerAreaProps {
   snapHighlightSuccess?: boolean;
   replacedCardIndex?: number | null;
   isFrozen?: boolean;
+  abilityBadge?: string;
 }
 
 export default function PlayerArea({
@@ -36,6 +37,7 @@ export default function PlayerArea({
   snapHighlightSuccess = true,
   replacedCardIndex = null,
   isFrozen = false,
+  abilityBadge,
 }: PlayerAreaProps) {
   return (
     <div className={`player-area${isFrozen ? ' player-frozen' : ''}`}>
@@ -44,6 +46,9 @@ export default function PlayerArea({
         {player.isCurrentTurn ? ' ▶' : ''}
         {isFrozen ? ' 🔒' : ''}
       </div>
+      {abilityBadge && (
+        <div className="ability-badge">{abilityBadge}</div>
+      )}
       <div className="player-cards">
         {player.cards.map((card, idx) => {
           const displayCard = card ?? (isMe ? tempRevealedCards[idx] ?? null : null);
