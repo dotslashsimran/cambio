@@ -27,7 +27,7 @@ export default function AbilityModal({ gameState }: AbilityModalProps) {
   const [selectedP2Player, setSelectedP2Player] = useState<string>('');
   const [selectedP2Card, setSelectedP2Card] = useState<number | null>(null);
 
-  const { abilityState, players, myPlayerId } = gameState;
+  const { abilityState, players, myPlayerId, cambioCalledBy } = gameState;
   if (!abilityState) return null;
 
   const isMyAbility = abilityState.isMyAbility;
@@ -36,6 +36,7 @@ export default function AbilityModal({ gameState }: AbilityModalProps) {
 
   const me = players.find(p => p.id === myPlayerId)!;
   const opponents = players.filter(p => p.id !== myPlayerId);
+  const isFrozen = (pid: string) => pid === cambioCalledBy;
 
   if (!isMyAbility) {
     const abilityOwner = players.find(p => p.isCurrentTurn);
@@ -167,7 +168,7 @@ export default function AbilityModal({ gameState }: AbilityModalProps) {
           <div className="ability-player-select">
             <select value={selectedOppPlayer} onChange={e => { setSelectedOppPlayer(e.target.value); setSelectedOppCard(null); }}>
               <option value="">-- Select opponent --</option>
-              {opponents.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+              {opponents.map(p => <option key={p.id} value={p.id} disabled={isFrozen(p.id)}>{isFrozen(p.id) ? `${p.name} 🔒 Frozen` : p.name}</option>)}
             </select>
           </div>
           {oppTarget && (
@@ -293,7 +294,7 @@ export default function AbilityModal({ gameState }: AbilityModalProps) {
             <div className="ability-player-select">
               <select value={selectedOppPlayer} onChange={e => { setSelectedOppPlayer(e.target.value); setSelectedOppCard(null); }}>
                 <option value="">-- Select opponent --</option>
-                {opponents.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                {opponents.map(p => <option key={p.id} value={p.id} disabled={isFrozen(p.id)}>{isFrozen(p.id) ? `${p.name} 🔒 Frozen` : p.name}</option>)}
               </select>
             </div>
             {oppTarget && (
@@ -339,7 +340,7 @@ export default function AbilityModal({ gameState }: AbilityModalProps) {
           <div className="ability-player-select">
             <select value={selectedOppPlayer} onChange={e => { setSelectedOppPlayer(e.target.value); setSelectedOppCard(null); }}>
               <option value="">-- Select opponent --</option>
-              {opponents.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+              {opponents.map(p => <option key={p.id} value={p.id} disabled={isFrozen(p.id)}>{isFrozen(p.id) ? `${p.name} 🔒 Frozen` : p.name}</option>)}
             </select>
           </div>
           {oppTarget && (
@@ -395,7 +396,7 @@ export default function AbilityModal({ gameState }: AbilityModalProps) {
             <div className="ability-player-select">
               <select value={selectedP1Player} onChange={e => { setSelectedP1Player(e.target.value); setSelectedP1Card(null); }}>
                 <option value="">-- Select player --</option>
-                {players.map(p => <option key={p.id} value={p.id}>{p.id === myPlayerId ? 'You' : p.name}</option>)}
+                {players.map(p => <option key={p.id} value={p.id} disabled={isFrozen(p.id)}>{p.id === myPlayerId ? 'You' : isFrozen(p.id) ? `${p.name} 🔒 Frozen` : p.name}</option>)}
               </select>
             </div>
             {p1Target && (
@@ -417,7 +418,7 @@ export default function AbilityModal({ gameState }: AbilityModalProps) {
             <div className="ability-player-select">
               <select value={selectedP2Player} onChange={e => { setSelectedP2Player(e.target.value); setSelectedP2Card(null); }}>
                 <option value="">-- Select player --</option>
-                {players.map(p => <option key={p.id} value={p.id}>{p.id === myPlayerId ? 'You' : p.name}</option>)}
+                {players.map(p => <option key={p.id} value={p.id} disabled={isFrozen(p.id)}>{p.id === myPlayerId ? 'You' : isFrozen(p.id) ? `${p.name} 🔒 Frozen` : p.name}</option>)}
               </select>
             </div>
             {p2Target && (
@@ -504,7 +505,7 @@ export default function AbilityModal({ gameState }: AbilityModalProps) {
           <div className="ability-player-select">
             <select value={selectedOppPlayer} onChange={e => { setSelectedOppPlayer(e.target.value); setSelectedOppCard(null); }}>
               <option value="">-- Select opponent --</option>
-              {opponents.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+              {opponents.map(p => <option key={p.id} value={p.id} disabled={isFrozen(p.id)}>{isFrozen(p.id) ? `${p.name} 🔒 Frozen` : p.name}</option>)}
             </select>
           </div>
           {oppTarget && (
@@ -569,7 +570,7 @@ export default function AbilityModal({ gameState }: AbilityModalProps) {
             <div className="ability-player-select">
               <select value={selectedP1Player} onChange={e => { setSelectedP1Player(e.target.value); setSelectedP1Card(null); }}>
                 <option value="">-- Select player --</option>
-                {players.map(p => <option key={p.id} value={p.id}>{p.id === myPlayerId ? 'You' : p.name}</option>)}
+                {players.map(p => <option key={p.id} value={p.id} disabled={isFrozen(p.id)}>{p.id === myPlayerId ? 'You' : isFrozen(p.id) ? `${p.name} 🔒 Frozen` : p.name}</option>)}
               </select>
             </div>
             {p1Target && (
@@ -591,7 +592,7 @@ export default function AbilityModal({ gameState }: AbilityModalProps) {
             <div className="ability-player-select">
               <select value={selectedP2Player} onChange={e => { setSelectedP2Player(e.target.value); setSelectedP2Card(null); }}>
                 <option value="">-- Select player --</option>
-                {players.map(p => <option key={p.id} value={p.id}>{p.id === myPlayerId ? 'You' : p.name}</option>)}
+                {players.map(p => <option key={p.id} value={p.id} disabled={isFrozen(p.id)}>{p.id === myPlayerId ? 'You' : isFrozen(p.id) ? `${p.name} 🔒 Frozen` : p.name}</option>)}
               </select>
             </div>
             {p2Target && (

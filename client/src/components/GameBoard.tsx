@@ -97,6 +97,7 @@ export default function GameBoard({ gameState, myPlayerId, roomCode, chatMessage
   // Double-click my own card → snap attempt
   const handleMyCardDoubleClick = (index: number) => {
     if (!canSnap) return;
+    if (myPlayerId === cambioCalledBy) return; // frozen
     socket.emit('snap', { targetPlayerId: null, targetCardIndex: null, myCardIndex: index });
   };
 
@@ -130,6 +131,7 @@ export default function GameBoard({ gameState, myPlayerId, roomCode, chatMessage
   // Double-click opponent card → snap attempt (then must pick card to give)
   const handleOpponentCardDoubleClick = (playerId: string, playerName: string, cardIndex: number) => {
     if (!canSnap) return;
+    if (playerId === cambioCalledBy) return; // frozen
     setPendingOpponentSnap({ targetPlayerId: playerId, targetCardIndex: cardIndex, targetPlayerName: playerName });
   };
 
@@ -202,12 +204,13 @@ export default function GameBoard({ gameState, myPlayerId, roomCode, chatMessage
               player={opp}
               isMe={false}
               size="sm"
-              onCardDoubleClick={canSnap ? (idx) => handleOpponentCardDoubleClick(opp.id, opp.name, idx) : undefined}
+              onCardDoubleClick={canSnap && opp.id !== cambioCalledBy ? (idx) => handleOpponentCardDoubleClick(opp.id, opp.name, idx) : undefined}
               swappingCardIndices={oppSwapping}
               peekHighlightIndex={oppPeekHighlight}
               snapHighlightIndex={oppSnapIdx}
               snapHighlightSuccess={snapAnim?.success ?? true}
               replacedCardIndex={oppReplaced}
+              isFrozen={opp.id === cambioCalledBy}
             />
           );
         })}
@@ -291,6 +294,7 @@ export default function GameBoard({ gameState, myPlayerId, roomCode, chatMessage
               : null}
           snapHighlightSuccess={snapAnim?.success ?? true}
           replacedCardIndex={lastReplace?.playerId === myPlayerId ? lastReplace.cardIndex : null}
+          isFrozen={myPlayerId === cambioCalledBy}
         />
 
         <div className="action-panel-area">

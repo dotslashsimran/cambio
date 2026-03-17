@@ -17,6 +17,7 @@ interface PlayerAreaProps {
   snapHighlightIndex?: number | null;
   snapHighlightSuccess?: boolean;
   replacedCardIndex?: number | null;
+  isFrozen?: boolean;
 }
 
 export default function PlayerArea({
@@ -34,12 +35,14 @@ export default function PlayerArea({
   snapHighlightIndex = null,
   snapHighlightSuccess = true,
   replacedCardIndex = null,
+  isFrozen = false,
 }: PlayerAreaProps) {
   return (
-    <div className="player-area">
-      <div className={`player-name-tag ${player.isCurrentTurn ? 'current-turn' : ''}`}>
+    <div className={`player-area${isFrozen ? ' player-frozen' : ''}`}>
+      <div className={`player-name-tag ${player.isCurrentTurn ? 'current-turn' : ''}${isFrozen ? ' frozen-tag' : ''}`}>
         {isMe ? 'You' : player.name}
         {player.isCurrentTurn ? ' ▶' : ''}
+        {isFrozen ? ' 🔒' : ''}
       </div>
       <div className="player-cards">
         {player.cards.map((card, idx) => {

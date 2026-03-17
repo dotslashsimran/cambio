@@ -1237,3 +1237,16 @@ body {
 .card-replaced {
   animation: replace-flash 1.2s ease both;
 }
+
+/* ─── Frozen player (Cambio caller) ─── */
+.player-frozen {
+  opacity: 0.75;
+}
+
+.frozen-tag {
+  color: #93c5fd !important;
+}
+
+.player-frozen .player-cards {
+  filter: grayscale(0.4);
+}

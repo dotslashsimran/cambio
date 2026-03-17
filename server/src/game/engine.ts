@@ -243,6 +243,16 @@ export function snap(
   const snapper = state.players.find(p => p.id === snappingPlayerId);
   if (!snapper) return { state, success: false, message: 'Player not found' };
 
+  // Frozen cards: cambio caller's cards cannot be snapped, and the caller cannot snap
+  if (state.cambioCalledBy) {
+    if (snappingPlayerId === state.cambioCalledBy) {
+      return { state, success: false, message: 'Your cards are frozen — you called Cambio!' };
+    }
+    if (targetPlayerId === state.cambioCalledBy) {
+      return { state, success: false, message: `${snapper.name}: those cards are frozen!` };
+    }
+  }
+
   const discardTop = state.discardPile[state.discardPile.length - 1];
   const discardValue = discardTop.value;
 
@@ -350,6 +360,10 @@ export function abilityAction(
   const ability = state.abilityState;
   const rank = ability.abilityCard.rank;
 
+  const frozen = state.cambioCalledBy;
+  const frozenError = (targetId: string) =>
+    frozen && targetId === frozen ? { error: "That player called Cambio — their cards are frozen!" } : null;
+
   // 7/8: peek own card
   if (rank === '7' || rank === '8') {
     if (ability.step === 'peek_own_select') {
@@ -380,6 +394,8 @@ export function abilityAction(
     if (ability.step === 'peek_opp_select') {
       if (action !== 'peek_opp') return { error: 'Expected peek_opp action' };
       const { targetPlayerId, cardIndex } = data;
+      const fe = frozenError(targetPlayerId);
+      if (fe) return fe;
       const target = state.players.find(p => p.id === targetPlayerId);
       if (!target) return { error: 'Target player not found' };
       if (cardIndex < 0 || cardIndex >= target.hand.length) return { error: 'Invalid card index' };
@@ -439,6 +455,8 @@ export function abilityAction(
       if (action !== 'do_swap') return { error: 'Expected do_swap action' };
       const { myCardIndex, targetPlayerId, targetCardIndex } = data;
       if (myCardIndex === undefined || myCardIndex === null) return { error: 'No own card selected' };
+      const fe = frozenError(targetPlayerId);
+      if (fe) return fe;
 
       return performSwap(state, playerId, myCardIndex, targetPlayerId, targetCardIndex, ability);
     }
@@ -449,6 +467,8 @@ export function abilityAction(
     if (ability.step === 'peek_opp_select') {
       if (action !== 'peek_opp') return { error: 'Expected peek_opp action' };
       const { targetPlayerId, cardIndex } = data;
+      const fe = frozenError(targetPlayerId);
+      if (fe) return fe;
       const target = state.players.find(p => p.id === targetPlayerId);
       if (!target) return { error: 'Target player not found' };
       if (cardIndex < 0 || cardIndex >= target.hand.length) return { error: 'Invalid card index' };
@@ -472,8 +492,11 @@ export function abilityAction(
         return advanceTurn({ ...state, abilityState: { ...ability, step: 'done' } });
       }
       if (action !== 'do_swap') return { error: 'Expected do_swap or skip action' };
-      // data: { p1Id, p1CardIndex, p2Id, p2CardIndex }
       const { p1Id, p1CardIndex, p2Id, p2CardIndex } = data;
+      const fe1 = frozenError(p1Id);
+      if (fe1) return fe1;
+      const fe2 = frozenError(p2Id);
+      if (fe2) return fe2;
       return performSwap(state, p1Id, p1CardIndex, p2Id, p2CardIndex, ability);
     }
   }
@@ -507,6 +530,8 @@ export function abilityAction(
     if (ability.step === 'peek_opp_select') {
       if (action !== 'peek_opp') return { error: 'Expected peek_opp action' };
       const { targetPlayerId, cardIndex } = data;
+      const fe = frozenError(targetPlayerId);
+      if (fe) return fe;
       const target = state.players.find(p => p.id === targetPlayerId);
       if (!target) return { error: 'Target player not found' };
       if (cardIndex < 0 || cardIndex >= target.hand.length) return { error: 'Invalid card index' };
@@ -530,8 +555,11 @@ export function abilityAction(
         return advanceTurn({ ...state, abilityState: { ...ability, step: 'done' } });
       }
       if (action !== 'do_swap') return { error: 'Expected do_swap or skip action' };
-      // data: { p1Id, p1CardIndex, p2Id, p2CardIndex }
       const { p1Id, p1CardIndex, p2Id, p2CardIndex } = data;
+      const fe1 = frozenError(p1Id);
+      if (fe1) return fe1;
+      const fe2 = frozenError(p2Id);
+      if (fe2) return fe2;
       return performSwap(state, p1Id, p1CardIndex, p2Id, p2CardIndex, ability);
     }
   }
@@ -587,8 +615,13 @@ function performSwap(
 export function advanceTurn(state: ServerGameState): ServerGameState {
   const nextIndex = (state.currentPlayerIndex + 1) % state.players.length;
 
-  if (state.phase === 'last_turns') {
-    // Each call to advanceTurn means one more player has finished their last turn
+  // Treat as last_turns if phase is last_turns, OR if cambio was called and we're
+  // resolving an ability (phase === 'ability' but game is still in last_turns mode).
+  const inLastTurns =
+    state.phase === 'last_turns' ||
+    (state.cambioCalledBy !== null && state.lastTurnsLeft > 0 && state.phase === 'ability');
+
+  if (inLastTurns) {
     const newLastTurnsLeft = state.lastTurnsLeft - 1;
     if (newLastTurnsLeft <= 0) {
       return endGame({ ...state, currentPlayerIndex: nextIndex, lastTurnsLeft: 0, abilityState: null });
