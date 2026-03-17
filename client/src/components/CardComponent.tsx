@@ -13,13 +13,17 @@ interface CardComponentProps {
   glowGreen?: boolean;
 }
 
-const SUIT_SYMBOLS: Record<string, string> = {
-  hearts: '♥',
-  diamonds: '♦',
-  clubs: '♣',
-  spades: '♠',
-  joker: '🃏',
+const BASE = 'https://webisso.github.io/playing-cards/';
+
+const RANK_MAP: Record<string, string> = {
+  'A': 'ace', 'J': 'jack', 'Q': 'queen', 'K': 'king',
 };
+
+function getCardUrl(card: ClientCard): string {
+  if (card.suit === 'joker') return `${BASE}png/joker_red.png`;
+  const rank = RANK_MAP[card.rank] ?? card.rank.toLowerCase();
+  return `${BASE}png/${rank}_of_${card.suit}.png`;
+}
 
 export default function CardComponent({
   card,
@@ -43,43 +47,41 @@ export default function CardComponent({
     disabled ? 'card-disabled' : '',
     glowGreen ? 'card-glow-green' : '',
     !card && !faceDown ? 'card-empty' : '',
-    card && !showFaceDown ? `card-${card.suit}` : '',
   ].filter(Boolean).join(' ');
 
   if (showFaceDown) {
     return (
-      <div className={classes} onClick={disabled ? undefined : onClick} onDoubleClick={disabled ? undefined : onDoubleClick} />
+      <div
+        className={classes}
+        onClick={disabled ? undefined : onClick}
+        onDoubleClick={disabled ? undefined : onDoubleClick}
+      />
     );
   }
 
   if (!card) {
-    return <div className={classes} onClick={disabled ? undefined : onClick} onDoubleClick={disabled ? undefined : onDoubleClick} />;
+    return (
+      <div
+        className={classes}
+        onClick={disabled ? undefined : onClick}
+        onDoubleClick={disabled ? undefined : onDoubleClick}
+      />
+    );
   }
 
-  const symbol = SUIT_SYMBOLS[card.suit];
-
   return (
-    <div className={classes} onClick={disabled ? undefined : onClick} onDoubleClick={disabled ? undefined : onDoubleClick}>
-      <div className="card-inner">
-        <div className="card-corner card-corner-tl">
-          <span className="card-rank">{card.rank}</span>
-          <span className="card-suit-sm">{symbol}</span>
-        </div>
-        <div className="card-center-suit">{symbol}</div>
-        <div className="card-corner card-corner-br">
-          <span className="card-rank">{card.rank}</span>
-          <span className="card-suit-sm">{symbol}</span>
-        </div>
-        {/* Value hint on large cards */}
-        {size === 'lg' && (
-          <div style={{
-            position: 'absolute', bottom: 22, left: '50%', transform: 'translateX(-50%)',
-            fontSize: '0.6rem', color: 'rgba(0,0,0,0.3)', fontWeight: 700
-          }}>
-            {card.value}
-          </div>
-        )}
-      </div>
+    <div
+      className={classes}
+      onClick={disabled ? undefined : onClick}
+      onDoubleClick={disabled ? undefined : onDoubleClick}
+      style={{ padding: 0, overflow: 'hidden', background: 'white' }}
+    >
+      <img
+        src={getCardUrl(card)}
+        alt={`${card.rank} of ${card.suit}`}
+        draggable={false}
+        style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
+      />
     </div>
   );
 }
