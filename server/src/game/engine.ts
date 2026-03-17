@@ -204,12 +204,26 @@ export function discardDrawn(
 
   if (hasAbility) {
     const currentPlayer = newState.players[newState.currentPlayerIndex];
+    const hasOppTarget = newState.players.some(
+      p => p.id !== currentPlayer.id && p.id !== newState.cambioCalledBy
+    );
+
     let step: AbilityStep;
-    if (card.rank === '7' || card.rank === '8') step = 'peek_own_select';
-    else if (card.rank === '9' || card.rank === '10') step = 'peek_opp_select';
-    else if (card.rank === 'J') step = 'peek_own_select';
-    else if (card.rank === 'Q') step = 'peek_opp_select';
-    else step = 'peek_own_select'; // K
+    if (card.rank === '7' || card.rank === '8') {
+      step = 'peek_own_select';
+    } else if (card.rank === '9' || card.rank === '10') {
+      // Requires peeking an opponent — skip if no valid targets
+      if (!hasOppTarget) { newState = advanceTurn(newState); return newState; }
+      step = 'peek_opp_select';
+    } else if (card.rank === 'J') {
+      step = 'peek_own_select';
+    } else if (card.rank === 'Q') {
+      // Requires peeking an opponent — skip if no valid targets
+      if (!hasOppTarget) { newState = advanceTurn(newState); return newState; }
+      step = 'peek_opp_select';
+    } else {
+      step = 'peek_own_select'; // K — opp peek handled later
+    }
 
     newState = {
       ...newState,
@@ -443,6 +457,12 @@ export function abilityAction(
         return advanceTurn({ ...state, abilityState: { ...ability, step: 'done' } });
       }
       if (action === 'swap') {
+        const hasOppTarget = state.players.some(
+          p => p.id !== playerId && p.id !== state.cambioCalledBy
+        );
+        if (!hasOppTarget) {
+          return advanceTurn({ ...state, abilityState: { ...ability, step: 'done' } });
+        }
         return {
           ...state,
           abilityState: { ...ability, step: 'jack_swap_select_opp' },
@@ -515,12 +535,16 @@ export function abilityAction(
         p.id === playerId ? { ...p, knownCardIndices: newKnown } : p
       );
 
+      const hasOppTarget = state.players.some(
+        p => p.id !== playerId && p.id !== state.cambioCalledBy
+      );
       return {
         ...state,
         players: updatedPlayers,
         abilityState: {
           ...ability,
-          step: 'peek_opp_select',
+          // If no valid opponent to peek, skip straight to free-swap
+          step: hasOppTarget ? 'peek_opp_select' : 'king_swap_select',
           peekedOwnIndex: cardIndex,
           peekedOwnCard: peekedCard,
         },

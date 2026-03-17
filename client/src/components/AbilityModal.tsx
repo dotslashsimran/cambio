@@ -236,6 +236,7 @@ export default function AbilityModal({ gameState }: AbilityModalProps) {
   if (rank === 'J' && step === 'jack_swap_decide') {
     const peekedIdx = abilityState.peekedOwnIndex;
     const peekedCard = abilityState.peekedOwnCard;
+    const hasValidOpp = opponents.some(p => !isFrozen(p.id));
     return (
       <div className="ability-modal-backdrop">
         <div className="ability-modal">
@@ -246,13 +247,16 @@ export default function AbilityModal({ gameState }: AbilityModalProps) {
               <CardComponent card={peekedCard} size="lg" />
             </div>
           )}
-          <div className="ability-step-desc">Do you want to swap this card with an opponent's card?</div>
+          {hasValidOpp
+            ? <div className="ability-step-desc">Do you want to swap this card with an opponent's card?</div>
+            : <div className="ability-step-desc" style={{ color: '#93c5fd' }}>All opponents' cards are frozen — swap skipped.</div>
+          }
           <div className="ability-actions">
-            <button className="btn btn-primary" onClick={() => emitAbility('swap')}>
-              Swap It
-            </button>
+            {hasValidOpp && (
+              <button className="btn btn-primary" onClick={() => emitAbility('swap')}>Swap It</button>
+            )}
             <button className="btn btn-secondary" onClick={() => emitAbility('skip')}>
-              Skip
+              {hasValidOpp ? 'Skip' : 'OK'}
             </button>
           </div>
         </div>
