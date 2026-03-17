@@ -15,8 +15,27 @@ import {
   abilityAction,
   buildClientState,
 } from '../game/engine';
-import { ServerGameState } from '../types';
+import { ServerGameState, GamePhase } from '../types';
 
+// After the final move in last_turns, give players 1.5s to snap before game ends.
+function broadcastWithSnapWindow(io: Server, room: ReturnType<typeof getRoom>, newState: ServerGameState, wasLastTurns: boolean) {
+  if (!room) return;
+  if (newState.phase === 'game_over' && wasLastTurns) {
+    const snapWindowState: ServerGameState = { ...newState, phase: 'last_turns' as GamePhase };
+    room.gameState = snapWindowState;
+    broadcastGameState(io, snapWindowState);
+    const roomCode = room.code;
+    setTimeout(() => {
+      const r = getRoom(roomCode);
+      if (!r?.gameState || r.gameState.phase === 'game_over') return;
+      r.gameState = { ...r.gameState, phase: 'game_over' as GamePhase };
+      broadcastGameState(io, r.gameState);
+    }, 1500);
+  } else {
+    room.gameState = newState;
+    broadcastGameState(io, newState);
+  }
+}
 
 function broadcastGameState(io: Server, state: ServerGameState): void {
   for (const player of state.players) {
@@ -157,14 +176,16 @@ export function registerHandlers(io: Server, socket: Socket): void {
     const room = getRoom(socket.data.roomCode);
     if (!room || !room.gameState) return;
 
+    const wasLastTurns = room.gameState.phase === 'last_turns' ||
+      (room.gameState.cambioCalledBy !== null && room.gameState.lastTurnsLeft > 0 && room.gameState.phase === 'ability');
+
     const result = replaceCard(room.gameState, socket.data.playerId, data.cardIndex);
     if ('error' in result) {
       socket.emit('error', { message: result.error });
       return;
     }
 
-    room.gameState = result;
-    broadcastGameState(io, room.gameState);
+    broadcastWithSnapWindow(io, room, result, wasLastTurns);
   });
 
   // Discard drawn card
@@ -172,14 +193,16 @@ export function registerHandlers(io: Server, socket: Socket): void {
     const room = getRoom(socket.data.roomCode);
     if (!room || !room.gameState) return;
 
+    const wasLastTurns = room.gameState.phase === 'last_turns' ||
+      (room.gameState.cambioCalledBy !== null && room.gameState.lastTurnsLeft > 0 && room.gameState.phase === 'ability');
+
     const result = discardDrawn(room.gameState, socket.data.playerId);
     if ('error' in result) {
       socket.emit('error', { message: result.error });
       return;
     }
 
-    room.gameState = result;
-    broadcastGameState(io, room.gameState);
+    broadcastWithSnapWindow(io, room, result, wasLastTurns);
   });
 
   // Snap intent — reserves opponent's card before the player picks which card to give
@@ -249,14 +272,16 @@ export function registerHandlers(io: Server, socket: Socket): void {
     const room = getRoom(socket.data.roomCode);
     if (!room || !room.gameState) return;
 
+    const wasLastTurns = room.gameState.phase === 'last_turns' ||
+      (room.gameState.cambioCalledBy !== null && room.gameState.lastTurnsLeft > 0 && room.gameState.phase === 'ability');
+
     const result = abilityAction(room.gameState, socket.data.playerId, data.action, data.data || {});
     if ('error' in result) {
       socket.emit('error', { message: result.error });
       return;
     }
 
-    room.gameState = result;
-    broadcastGameState(io, room.gameState);
+    broadcastWithSnapWindow(io, room, result, wasLastTurns);
   });
 
   // Chat message
