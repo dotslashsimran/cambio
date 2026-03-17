@@ -70,6 +70,15 @@ export default function CardComponent({
           <span className="card-rank">{card.rank}</span>
           <span className="card-suit-sm">{symbol}</span>
         </div>
+        {/* Value hint on large cards */}
+        {size === 'lg' && (
+          <div style={{
+            position: 'absolute', bottom: 22, left: '50%', transform: 'translateX(-50%)',
+            fontSize: '0.6rem', color: 'rgba(0,0,0,0.3)', fontWeight: 700
+          }}>
+            {card.value}
+          </div>
+        )}
       </div>
     </div>
   );

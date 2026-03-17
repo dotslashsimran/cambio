@@ -141,14 +141,6 @@ export default function ActionPanel({ gameState, selectedCardIndex, onSelectCard
     );
   }
 
-  if (phase === 'snap_window') {
-    return (
-      <div className="action-panel">
-        <div className="turn-info">Snap window open! Act fast!</div>
-      </div>
-    );
-  }
-
   if (phase === 'ability') {
     return (
       <div className="action-panel">

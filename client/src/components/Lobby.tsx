@@ -69,6 +69,11 @@ export default function Lobby({ onJoinedRoom, roomPlayers, hostId, myPlayerId, r
   if (view === 'waiting') {
     return (
       <div className="lobby">
+        <div className="lobby-bg-cards" aria-hidden="true">
+          {['♠','♥','♦','♣','♠','♥'].map((s, i) => (
+            <span key={i} className={`lobby-float lobby-float-${i}`}>{s}</span>
+          ))}
+        </div>
         <div className="lobby-title">CAMBIO</div>
         <div className="lobby-subtitle">2–6 Players • Lowest Score Wins</div>
 
@@ -141,6 +146,11 @@ export default function Lobby({ onJoinedRoom, roomPlayers, hostId, myPlayerId, r
 
   return (
     <div className="lobby">
+      <div className="lobby-bg-cards" aria-hidden="true">
+        {['♠','♥','♦','♣','♠','♥'].map((s, i) => (
+          <span key={i} className={`lobby-float lobby-float-${i}`}>{s}</span>
+        ))}
+      </div>
       <div className="lobby-title">CAMBIO</div>
       <div className="lobby-subtitle">The Card Game of Bluffing & Memory</div>
 
