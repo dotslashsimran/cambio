@@ -273,8 +273,9 @@ export default function AbilityModal({ gameState }: AbilityModalProps) {
         <div className="ability-modal">
           <div className="ability-title">{ABILITY_NAMES[rank]}</div>
           {peekedCard && (
-            <div className="peeked-card-reveal" style={{ marginBottom: 8 }}>
-              <div className="label">You peeked slot {(peekedIdx ?? 0) + 1}: <strong>{peekedCard.rank}{peekedCard.suit[0].toUpperCase()}</strong></div>
+            <div className="peeked-card-reveal">
+              <div className="label">Your card at slot {(peekedIdx ?? 0) + 1}:</div>
+              <CardComponent card={peekedCard} size="lg" />
             </div>
           )}
           <div className="ability-step-desc">Choose any of your cards and an opponent's card to swap:</div>
@@ -554,15 +555,17 @@ export default function AbilityModal({ gameState }: AbilityModalProps) {
         <div className="ability-modal">
           <div className="ability-title">{ABILITY_NAMES[rank]}</div>
           {(myCard || oppCard) && (
-            <div style={{ display: 'flex', gap: 16, justifyContent: 'center', alignItems: 'flex-end', marginBottom: 8 }}>
+            <div style={{ display: 'flex', gap: 24, justifyContent: 'center', alignItems: 'flex-end', marginBottom: 8 }}>
               {myCard && (
                 <div className="peeked-card-reveal">
-                  <div className="label">You peeked slot {(myIdx ?? 0) + 1}: <strong>{myCard.rank}{myCard.suit[0].toUpperCase()}</strong></div>
+                  <div className="label">Your slot {(myIdx ?? 0) + 1}:</div>
+                  <CardComponent card={myCard} size="lg" />
                 </div>
               )}
               {oppCard && (
                 <div className="peeked-card-reveal">
-                  <div className="label">{oppName}'s slot {(oppIdx ?? 0) + 1}: <strong>{oppCard.rank}{oppCard.suit[0].toUpperCase()}</strong></div>
+                  <div className="label">{oppName}'s slot {(oppIdx ?? 0) + 1}:</div>
+                  <CardComponent card={oppCard} size="lg" />
                 </div>
               )}
             </div>
