@@ -83,6 +83,7 @@ export interface ServerGameState {
   lastSwap?: SwapInfo;
   lastReplace?: ReplaceInfo;
   snapReservation?: SnapReservation;
+  snapWindowEndsAt?: number;
 }
 
 // ---- Client-facing types ----

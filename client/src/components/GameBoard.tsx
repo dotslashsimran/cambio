@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ClientGameState, ClientCard } from '../types';
 import { getSocket } from '../socket';
 import PlayerArea from './PlayerArea';
@@ -39,6 +39,7 @@ export default function GameBoard({ gameState, myPlayerId, roomCode, chatMessage
   const [snapMessage, setSnapMessage] = useState<{ text: string; success: boolean } | null>(null);
   const [snapAnim, setSnapAnim] = useState<SnapAnimation | null>(null);
   const peekTimers = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
+  const [snapCountdown, setSnapCountdown] = useState<number | null>(null);
   const pendingSnapIntentRef = useRef<PendingOpponentSnap | null>(null);
   const socket = getSocket();
 
@@ -48,6 +49,19 @@ export default function GameBoard({ gameState, myPlayerId, roomCode, chatMessage
       setTempRevealedCards({});
     }
   }, [gameState.phase]);
+
+  // Countdown ticker for snap window
+  useEffect(() => {
+    const endsAt = gameState.snapWindowEndsAt;
+    if (!endsAt) { setSnapCountdown(null); return; }
+    const tick = () => {
+      const remaining = Math.ceil((endsAt - Date.now()) / 1000);
+      setSnapCountdown(remaining > 0 ? remaining : 0);
+    };
+    tick();
+    const id = setInterval(tick, 250);
+    return () => clearInterval(id);
+  }, [gameState.snapWindowEndsAt]);
 
   useEffect(() => {
     const handlePeekReveal = ({ cardIndex, card, duration }: { cardIndex: number; card: ClientCard; duration: number }) => {
@@ -187,6 +201,15 @@ export default function GameBoard({ gameState, myPlayerId, roomCode, chatMessage
       {snapMessage && (
         <div className={`snap-toast ${snapMessage.success ? 'snap-toast-success' : 'snap-toast-fail'}`}>
           {snapMessage.text}
+        </div>
+      )}
+
+      {/* Snap window countdown banner */}
+      {snapCountdown !== null && (
+        <div className="snap-window-banner">
+          <span className="snap-window-icon">⚡</span>
+          <span>Game ending — snap now if you can!</span>
+          <span className="snap-window-countdown">{snapCountdown}s</span>
         </div>
       )}
 

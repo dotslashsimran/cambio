@@ -808,5 +808,6 @@ export function buildClientState(state: ServerGameState, forPlayerId: string): C
     canCallCambio,
     lastSwap: state.lastSwap,
     lastReplace: state.lastReplace,
+    snapWindowEndsAt: state.snapWindowEndsAt,
   };
 }

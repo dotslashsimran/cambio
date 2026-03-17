@@ -17,20 +17,23 @@ import {
 } from '../game/engine';
 import { ServerGameState, GamePhase } from '../types';
 
-// After the final move in last_turns, give players 1.5s to snap before game ends.
+const SNAP_WINDOW_MS = 5000;
+
+// After the final move in last_turns, give players 5s to snap before game ends.
 function broadcastWithSnapWindow(io: Server, room: ReturnType<typeof getRoom>, newState: ServerGameState, wasLastTurns: boolean) {
   if (!room) return;
   if (newState.phase === 'game_over' && wasLastTurns) {
-    const snapWindowState: ServerGameState = { ...newState, phase: 'last_turns' as GamePhase };
+    const endsAt = Date.now() + SNAP_WINDOW_MS;
+    const snapWindowState: ServerGameState = { ...newState, phase: 'last_turns' as GamePhase, snapWindowEndsAt: endsAt };
     room.gameState = snapWindowState;
     broadcastGameState(io, snapWindowState);
     const roomCode = room.code;
     setTimeout(() => {
       const r = getRoom(roomCode);
       if (!r?.gameState || r.gameState.phase === 'game_over') return;
-      r.gameState = { ...r.gameState, phase: 'game_over' as GamePhase };
+      r.gameState = { ...r.gameState, phase: 'game_over' as GamePhase, snapWindowEndsAt: undefined };
       broadcastGameState(io, r.gameState);
-    }, 1500);
+    }, SNAP_WINDOW_MS);
   } else {
     room.gameState = newState;
     broadcastGameState(io, newState);

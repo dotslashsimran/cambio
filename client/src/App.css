@@ -778,6 +778,46 @@ body {
 .snap-hint { font-size: 0.75rem; color: rgba(255,255,255,0.25); text-align: center; }
 .snap-hint-active { color: var(--gold-light); font-weight: 600; }
 
+/* Snap window countdown banner */
+.snap-window-banner {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 22px;
+  background: rgba(8, 10, 14, 0.95);
+  border: 1px solid rgba(210, 100, 20, 0.5);
+  border-radius: var(--pill);
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #fba94c;
+  z-index: 400;
+  pointer-events: none;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.6), 0 0 20px rgba(210,100,20,0.12);
+  animation: slideUp 0.3s ease;
+  white-space: nowrap;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateX(-50%) translateY(12px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.snap-window-icon { font-size: 1rem; }
+
+.snap-window-countdown {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--gold-bright);
+  min-width: 24px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
 .snap-pick-prompt {
   position: fixed;
   top: 58px;

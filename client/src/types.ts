@@ -72,6 +72,7 @@ export interface ClientGameState {
   canCallCambio: boolean;
   lastSwap?: SwapInfo;
   lastReplace?: ReplaceInfo;
+  snapWindowEndsAt?: number;
 }
 
 export interface RoomPlayer {
