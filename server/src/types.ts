@@ -55,6 +55,11 @@ export interface AbilityState {
   peekedOppCard?: Card;
 }
 
+export interface ReplaceInfo {
+  playerId: string;
+  cardIndex: number;
+}
+
 export interface ServerGameState {
   id: string;
   roomCode: string;
@@ -69,6 +74,7 @@ export interface ServerGameState {
   lastTurnsLeft: number;
   abilityState: AbilityState | null;
   lastSwap?: SwapInfo;
+  lastReplace?: ReplaceInfo;
 }
 
 // ---- Client-facing types ----
@@ -112,6 +118,7 @@ export interface ClientGameState {
   abilityState: ClientAbilityState | null;
   canCallCambio: boolean;
   lastSwap?: SwapInfo;
+  lastReplace?: ReplaceInfo;
 }
 
 export interface Room {

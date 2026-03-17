@@ -53,6 +53,11 @@ export interface SwapInfo {
   p2CardIndex: number;
 }
 
+export interface ReplaceInfo {
+  playerId: string;
+  cardIndex: number;
+}
+
 export interface ClientGameState {
   phase: GamePhase;
   myPlayerId: string;
@@ -66,6 +71,7 @@ export interface ClientGameState {
   abilityState: ClientAbilityState | null;
   canCallCambio: boolean;
   lastSwap?: SwapInfo;
+  lastReplace?: ReplaceInfo;
 }
 
 export interface RoomPlayer {

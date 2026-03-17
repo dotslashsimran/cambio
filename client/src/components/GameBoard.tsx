@@ -21,6 +21,14 @@ interface PendingOpponentSnap {
   targetPlayerName: string;
 }
 
+interface SnapAnimation {
+  success: boolean;
+  snapperId: string;
+  snapperCardIndex: number;
+  targetPlayerId?: string | null;
+  targetCardIndex?: number | null;
+}
+
 export default function GameBoard({ gameState, myPlayerId, roomCode, chatMessages }: GameBoardProps) {
   const [selectedCardIndex, setSelectedCardIndex] = useState<number | null>(null);
   const [chatInput, setChatInput] = useState('');
@@ -28,6 +36,7 @@ export default function GameBoard({ gameState, myPlayerId, roomCode, chatMessage
   const [peekedIndices, setPeekedIndices] = useState<Set<number>>(new Set());
   const [pendingOpponentSnap, setPendingOpponentSnap] = useState<PendingOpponentSnap | null>(null);
   const [snapMessage, setSnapMessage] = useState<{ text: string; success: boolean } | null>(null);
+  const [snapAnim, setSnapAnim] = useState<SnapAnimation | null>(null);
   const peekTimers = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
   const socket = getSocket();
 
@@ -58,15 +67,22 @@ export default function GameBoard({ gameState, myPlayerId, roomCode, chatMessage
       setTimeout(() => setSnapMessage(null), 2500);
     };
 
+    const handleSnapAnimation = (data: SnapAnimation) => {
+      setSnapAnim(data);
+      setTimeout(() => setSnapAnim(null), 900);
+    };
+
     socket.on('peek_reveal', handlePeekReveal);
     socket.on('snap_result', handleSnapResult);
+    socket.on('snap_animation', handleSnapAnimation);
     return () => {
       socket.off('peek_reveal', handlePeekReveal);
       socket.off('snap_result', handleSnapResult);
+      socket.off('snap_animation', handleSnapAnimation);
     };
   }, [socket]);
 
-  const { phase, players, deckSize, discardPileTop, currentPlayerIndex, drawnCard, abilityState, cambioCalledBy, lastSwap } = gameState;
+  const { phase, players, deckSize, discardPileTop, currentPlayerIndex, drawnCard, abilityState, cambioCalledBy, lastSwap, lastReplace } = gameState;
 
   const me = players.find(p => p.id === myPlayerId)!;
   const opponents = players.filter(p => p.id !== myPlayerId);
@@ -174,6 +190,12 @@ export default function GameBoard({ gameState, myPlayerId, roomCode, chatMessage
           const oppPeekHighlight = abilityState && !abilityState.isMyAbility
             ? (abilityState.peekedOppPlayerId === opp.id ? (abilityState.peekedOppIndex ?? null) : null)
             : null;
+          const oppSnapIdx = snapAnim?.snapperId === opp.id
+            ? snapAnim.snapperCardIndex
+            : snapAnim?.targetPlayerId === opp.id
+              ? (snapAnim.targetCardIndex ?? null)
+              : null;
+          const oppReplaced = lastReplace?.playerId === opp.id ? lastReplace.cardIndex : null;
           return (
             <PlayerArea
               key={opp.id}
@@ -183,6 +205,9 @@ export default function GameBoard({ gameState, myPlayerId, roomCode, chatMessage
               onCardDoubleClick={canSnap ? (idx) => handleOpponentCardDoubleClick(opp.id, opp.name, idx) : undefined}
               swappingCardIndices={oppSwapping}
               peekHighlightIndex={oppPeekHighlight}
+              snapHighlightIndex={oppSnapIdx}
+              snapHighlightSuccess={snapAnim?.success ?? true}
+              replacedCardIndex={oppReplaced}
             />
           );
         })}
@@ -259,6 +284,13 @@ export default function GameBoard({ gameState, myPlayerId, roomCode, chatMessage
           peekHighlightIndex={abilityState && !abilityState.isMyAbility
             ? (abilityState.peekedOppPlayerId === myPlayerId ? (abilityState.peekedOppIndex ?? null) : null)
             : null}
+          snapHighlightIndex={snapAnim?.snapperId === myPlayerId
+            ? snapAnim.snapperCardIndex
+            : snapAnim?.targetPlayerId === myPlayerId
+              ? (snapAnim.targetCardIndex ?? null)
+              : null}
+          snapHighlightSuccess={snapAnim?.success ?? true}
+          replacedCardIndex={lastReplace?.playerId === myPlayerId ? lastReplace.cardIndex : null}
         />
 
         <div className="action-panel-area">

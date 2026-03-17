@@ -202,6 +202,13 @@ export function registerHandlers(io: Server, socket: Socket): void {
     broadcastGameState(io, room.gameState);
     socket.emit('snap_result', { success: result.success, message: result.message });
     io.to(room.code).emit('snap_notification', { message: result.message, success: result.success });
+    io.to(room.code).emit('snap_animation', {
+      success: result.success,
+      snapperId: socket.data.playerId,
+      snapperCardIndex: data.myCardIndex,
+      targetPlayerId: data.targetPlayerId,
+      targetCardIndex: data.targetCardIndex,
+    });
   });
 
   // Ability action

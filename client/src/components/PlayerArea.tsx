@@ -14,6 +14,9 @@ interface PlayerAreaProps {
   tempRevealedCards?: Record<number, ClientCard>;
   peekHighlightIndex?: number | null;
   swappingCardIndices?: number[];
+  snapHighlightIndex?: number | null;
+  snapHighlightSuccess?: boolean;
+  replacedCardIndex?: number | null;
 }
 
 export default function PlayerArea({
@@ -28,6 +31,9 @@ export default function PlayerArea({
   tempRevealedCards = {},
   peekHighlightIndex = null,
   swappingCardIndices = [],
+  snapHighlightIndex = null,
+  snapHighlightSuccess = true,
+  replacedCardIndex = null,
 }: PlayerAreaProps) {
   return (
     <div className="player-area">
@@ -40,8 +46,11 @@ export default function PlayerArea({
           const displayCard = card ?? (isMe ? tempRevealedCards[idx] ?? null : null);
           const isSwapping = swappingCardIndices.includes(idx);
           const isPeeked = peekHighlightIndex === idx;
+          const isSnapped = snapHighlightIndex === idx;
+          const isReplaced = replacedCardIndex === idx;
+          const snapClass = isSnapped ? (snapHighlightSuccess ? ' card-snap-success' : ' card-snap-fail') : '';
           return (
-            <div key={idx} className={`card-wrapper${isSwapping ? ' card-swapping' : ''}${isPeeked ? ' card-peeked' : ''}`}>
+            <div key={idx} className={`card-wrapper${isSwapping ? ' card-swapping' : ''}${isPeeked ? ' card-peeked' : ''}${snapClass}${isReplaced ? ' card-replaced' : ''}`}>
               <CardComponent
                 card={displayCard}
                 faceDown={!displayCard}

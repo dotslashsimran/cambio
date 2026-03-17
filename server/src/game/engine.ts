@@ -1,4 +1,4 @@
-import { Card, ServerGameState, ServerPlayer, AbilityState, AbilityStep, ClientGameState, ClientPlayer, ClientCard, ClientAbilityState, SwapInfo } from '../types';
+import { Card, ServerGameState, ServerPlayer, AbilityState, AbilityStep, ClientGameState, ClientPlayer, ClientCard, ClientAbilityState, SwapInfo, ReplaceInfo } from '../types';
 import { createDeck } from './deck';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -143,6 +143,7 @@ export function drawCard(
     drawnCard: card,
     drawnFrom: source,
     lastSwap: undefined,
+    lastReplace: undefined,
   };
 }
 
@@ -170,12 +171,14 @@ export function replaceCard(
   const updatedPlayers = state.players.map(p => p.id === playerId ? updatedPlayer : p);
   const newDiscardPile = [...state.discardPile, oldCard];
 
+  const lastReplace: ReplaceInfo = { playerId, cardIndex };
   const newState: ServerGameState = {
     ...state,
     players: updatedPlayers,
     discardPile: newDiscardPile,
     drawnCard: null,
     drawnFrom: null,
+    lastReplace,
   };
 
   return advanceTurn(newState);
@@ -690,5 +693,6 @@ export function buildClientState(state: ServerGameState, forPlayerId: string): C
     abilityState,
     canCallCambio,
     lastSwap: state.lastSwap,
+    lastReplace: state.lastReplace,
   };
 }
