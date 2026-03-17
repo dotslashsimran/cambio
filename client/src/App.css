@@ -1250,3 +1250,16 @@ body {
 .player-frozen .player-cards {
   filter: grayscale(0.4);
 }
+
+/* ─── Card flip reveal animation ─── */
+@keyframes card-flip-in {
+  0%   { transform: rotateY(90deg) scale(0.8); opacity: 0; }
+  60%  { transform: rotateY(-8deg) scale(1.05); opacity: 1; }
+  100% { transform: rotateY(0deg) scale(1);    opacity: 1; }
+}
+
+.peeked-card-reveal .card,
+.card-flip-in .card {
+  animation: card-flip-in 0.45s cubic-bezier(0.23, 1, 0.32, 1) both;
+  transform-origin: center;
+}

@@ -566,12 +566,17 @@ export function abilityAction(
         ...state,
         abilityState: {
           ...ability,
-          step: 'king_swap_select',
+          step: 'peek_opp_reveal',
           peekedOppPlayerId: targetPlayerId,
           peekedOppIndex: cardIndex,
           peekedOppCard: peekedCard,
         },
       };
+    }
+
+    if (ability.step === 'peek_opp_reveal') {
+      if (action !== 'close_peek') return { error: 'Expected close_peek action' };
+      return { ...state, abilityState: { ...ability, step: 'king_swap_select' } };
     }
 
     if (ability.step === 'king_swap_select') {

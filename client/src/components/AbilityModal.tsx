@@ -158,6 +158,35 @@ export default function AbilityModal({ gameState }: AbilityModalProps) {
     );
   }
 
+  // King: peek opp reveal (before swap picker)
+  if (rank === 'K' && step === 'peek_opp_reveal') {
+    const oppName = players.find(p => p.id === abilityState.peekedOppPlayerId)?.name ?? 'Opponent';
+    const myCard = abilityState.peekedOwnCard;
+    const myIdx = abilityState.peekedOwnIndex;
+    return (
+      <div className="ability-modal-backdrop">
+        <div className="ability-modal">
+          <div className="ability-title">{ABILITY_NAMES[rank]}</div>
+          {myCard && (
+            <div className="peeked-card-reveal" style={{ marginBottom: 4 }}>
+              <div className="label">Your slot {(myIdx ?? 0) + 1}:</div>
+              <CardComponent card={myCard} size="lg" />
+            </div>
+          )}
+          <div className="ability-step-desc">{oppName}'s card at slot {(abilityState.peekedOppIndex ?? 0) + 1}:</div>
+          {abilityState.peekedOppCard && (
+            <div className="peeked-card-reveal card-flip-in">
+              <CardComponent card={abilityState.peekedOppCard} size="lg" />
+            </div>
+          )}
+          <div className="ability-actions">
+            <button className="btn btn-primary" onClick={() => emitAbility('close_peek')}>Proceed to Swap</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // 9/10: peek opponent select
   if ((rank === '9' || rank === '10') && step === 'peek_opp_select') {
     return (
