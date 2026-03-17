@@ -1176,3 +1176,29 @@ body {
 .snap-banner-body, .snap-banner-card, .snap-banner-label,
 .snap-banner-actions, .snap-banner-select, .snap-banner-hint,
 .snap-mini-cards, .snap-slot-btn, .snap-select { display: none; }
+
+/* ─── Swap animation & peek highlight ─── */
+.card-wrapper {
+  display: inline-block;
+}
+
+@keyframes swap-pulse {
+  0%   { transform: scale(1);    filter: drop-shadow(0 0 0px rgba(196,154,50,0)); }
+  30%  { transform: scale(1.12); filter: drop-shadow(0 0 12px rgba(196,154,50,0.9)); }
+  60%  { transform: scale(0.94); filter: drop-shadow(0 0 8px rgba(196,154,50,0.7)); }
+  100% { transform: scale(1);    filter: drop-shadow(0 0 0px rgba(196,154,50,0)); }
+}
+
+.card-swapping {
+  animation: swap-pulse 0.9s ease both;
+}
+
+@keyframes peek-pulse {
+  0%   { filter: drop-shadow(0 0 0px rgba(99,179,237,0)); }
+  50%  { filter: drop-shadow(0 0 10px rgba(99,179,237,0.9)); }
+  100% { filter: drop-shadow(0 0 6px rgba(99,179,237,0.5)); }
+}
+
+.card-peeked {
+  animation: peek-pulse 1s ease infinite alternate;
+}

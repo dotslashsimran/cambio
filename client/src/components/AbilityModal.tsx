@@ -39,11 +39,30 @@ export default function AbilityModal({ gameState }: AbilityModalProps) {
 
   if (!isMyAbility) {
     const abilityOwner = players.find(p => p.isCurrentTurn);
+    const ownerName = abilityOwner?.name ?? 'Another player';
+
+    let actionDesc = 'using their ability...';
+    if (step === 'peek_own_select') actionDesc = 'choosing one of their own cards to peek at...';
+    else if (step === 'peek_own_reveal') {
+      const idx = abilityState.peekedOwnIndex;
+      actionDesc = idx !== undefined ? `peeking at their card in slot ${idx + 1}` : 'peeking at their own card...';
+    }
+    else if (step === 'peek_opp_select') actionDesc = 'choosing an opponent\'s card to peek at...';
+    else if (step === 'peek_opp_reveal') {
+      const oppName = players.find(p => p.id === abilityState.peekedOppPlayerId)?.name ?? 'someone';
+      const idx = abilityState.peekedOppIndex;
+      actionDesc = idx !== undefined ? `peeking at ${oppName}'s card in slot ${idx + 1}` : `peeking at ${oppName}'s card...`;
+    }
+    else if (step === 'jack_swap_decide') actionDesc = 'deciding whether to swap...';
+    else if (step === 'jack_swap_select_opp') actionDesc = 'choosing cards to swap...';
+    else if (step === 'queen_swap_select') actionDesc = 'choosing two cards to swap...';
+    else if (step === 'king_swap_select') actionDesc = 'choosing two cards to swap...';
+
     return (
       <div className="ability-modal-backdrop">
         <div className="ability-modal">
           <div className="ability-title">{ABILITY_NAMES[rank] || `Ability: ${rank}`}</div>
-          <div className="waiting-text">{abilityOwner?.name ?? 'Another player'} is using their ability...</div>
+          <div className="waiting-text"><strong>{ownerName}</strong> is {actionDesc}</div>
         </div>
       </div>
     );
@@ -240,39 +259,64 @@ export default function AbilityModal({ gameState }: AbilityModalProps) {
     );
   }
 
-  // Jack: select opponent card to swap with
+  // Jack: select any own card + opponent card to swap
   if (rank === 'J' && step === 'jack_swap_select_opp') {
     const peekedIdx = abilityState.peekedOwnIndex;
+    const peekedCard = abilityState.peekedOwnCard;
     return (
       <div className="ability-modal-backdrop">
         <div className="ability-modal">
           <div className="ability-title">{ABILITY_NAMES[rank]}</div>
-          <div className="ability-step-desc">Select an opponent's card to swap with your slot {(peekedIdx ?? 0) + 1}:</div>
-          <div className="ability-player-select">
-            <select value={selectedOppPlayer} onChange={e => { setSelectedOppPlayer(e.target.value); setSelectedOppCard(null); }}>
-              <option value="">-- Select opponent --</option>
-              {opponents.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-          </div>
-          {oppTarget && (
+          {peekedCard && (
+            <div className="peeked-card-reveal" style={{ marginBottom: 8 }}>
+              <div className="label">You peeked slot {(peekedIdx ?? 0) + 1}: <strong>{peekedCard.rank}{peekedCard.suit[0].toUpperCase()}</strong></div>
+            </div>
+          )}
+          <div className="ability-step-desc">Choose any of your cards and an opponent's card to swap:</div>
+
+          <div className="ability-select-grid">
+            <div className="ability-select-label">Your card:</div>
             <div className="ability-cards-row">
-              {Array.from({ length: oppTarget.cardCount }).map((_, idx) => (
+              {me.cards.map((card, idx) => (
                 <CardComponent
                   key={idx}
-                  card={oppTarget.cards[idx] ?? null}
-                  faceDown={!oppTarget.cards[idx]}
-                  selected={selectedOppCard === idx}
-                  onClick={() => setSelectedOppCard(idx)}
+                  card={card}
+                  faceDown={!card}
+                  selected={selectedOwnCard === idx}
+                  onClick={() => setSelectedOwnCard(idx)}
                   size="md"
                 />
               ))}
             </div>
-          )}
+
+            <div className="ability-select-label">Opponent's card:</div>
+            <div className="ability-player-select">
+              <select value={selectedOppPlayer} onChange={e => { setSelectedOppPlayer(e.target.value); setSelectedOppCard(null); }}>
+                <option value="">-- Select opponent --</option>
+                {opponents.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+            </div>
+            {oppTarget && (
+              <div className="ability-cards-row">
+                {Array.from({ length: oppTarget.cardCount }).map((_, idx) => (
+                  <CardComponent
+                    key={idx}
+                    card={oppTarget.cards[idx] ?? null}
+                    faceDown={!oppTarget.cards[idx]}
+                    selected={selectedOppCard === idx}
+                    onClick={() => setSelectedOppCard(idx)}
+                    size="md"
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+
           <div className="ability-actions">
             <button
               className="btn btn-primary"
-              onClick={() => emitAbility('do_swap', { targetPlayerId: selectedOppPlayer, targetCardIndex: selectedOppCard })}
-              disabled={!selectedOppPlayer || selectedOppCard === null}
+              onClick={() => emitAbility('do_swap', { myCardIndex: selectedOwnCard, targetPlayerId: selectedOppPlayer, targetCardIndex: selectedOppCard })}
+              disabled={selectedOwnCard === null || !selectedOppPlayer || selectedOppCard === null}
             >
               Swap!
             </button>
@@ -491,8 +535,8 @@ export default function AbilityModal({ gameState }: AbilityModalProps) {
     );
   }
 
-  // King: confirm swap
-  if (rank === 'K' && step === 'king_swap_confirm') {
+  // King: free swap after peeking both cards
+  if (rank === 'K' && step === 'king_swap_select') {
     const myCard = abilityState.peekedOwnCard;
     const myIdx = abilityState.peekedOwnIndex;
     const oppCard = abilityState.peekedOppCard;
@@ -504,24 +548,74 @@ export default function AbilityModal({ gameState }: AbilityModalProps) {
       <div className="ability-modal-backdrop">
         <div className="ability-modal">
           <div className="ability-title">{ABILITY_NAMES[rank]}</div>
-          <div style={{ display: 'flex', gap: 24, justifyContent: 'center', alignItems: 'flex-end' }}>
-            {myCard && (
-              <div className="peeked-card-reveal">
-                <div className="label">Your slot {(myIdx ?? 0) + 1}:</div>
-                <CardComponent card={myCard} size="lg" />
+          {(myCard || oppCard) && (
+            <div style={{ display: 'flex', gap: 16, justifyContent: 'center', alignItems: 'flex-end', marginBottom: 8 }}>
+              {myCard && (
+                <div className="peeked-card-reveal">
+                  <div className="label">You peeked slot {(myIdx ?? 0) + 1}: <strong>{myCard.rank}{myCard.suit[0].toUpperCase()}</strong></div>
+                </div>
+              )}
+              {oppCard && (
+                <div className="peeked-card-reveal">
+                  <div className="label">{oppName}'s slot {(oppIdx ?? 0) + 1}: <strong>{oppCard.rank}{oppCard.suit[0].toUpperCase()}</strong></div>
+                </div>
+              )}
+            </div>
+          )}
+          <div className="ability-step-desc">Now swap any two cards on the table (or skip):</div>
+
+          <div className="ability-select-grid">
+            <div className="ability-select-label">Card 1:</div>
+            <div className="ability-player-select">
+              <select value={selectedP1Player} onChange={e => { setSelectedP1Player(e.target.value); setSelectedP1Card(null); }}>
+                <option value="">-- Select player --</option>
+                {players.map(p => <option key={p.id} value={p.id}>{p.id === myPlayerId ? 'You' : p.name}</option>)}
+              </select>
+            </div>
+            {p1Target && (
+              <div className="ability-cards-row">
+                {Array.from({ length: p1Target.cardCount }).map((_, idx) => (
+                  <CardComponent
+                    key={idx}
+                    card={p1Target.cards[idx] ?? null}
+                    faceDown={!p1Target.cards[idx]}
+                    selected={selectedP1Card === idx}
+                    onClick={() => setSelectedP1Card(idx)}
+                    size="md"
+                  />
+                ))}
               </div>
             )}
-            <div style={{ fontSize: '1.5rem', color: 'var(--accent)', alignSelf: 'center' }}>⇄</div>
-            {oppCard && (
-              <div className="peeked-card-reveal">
-                <div className="label">{oppName}'s slot {(oppIdx ?? 0) + 1}:</div>
-                <CardComponent card={oppCard} size="lg" />
+
+            <div className="ability-select-label">Card 2:</div>
+            <div className="ability-player-select">
+              <select value={selectedP2Player} onChange={e => { setSelectedP2Player(e.target.value); setSelectedP2Card(null); }}>
+                <option value="">-- Select player --</option>
+                {players.map(p => <option key={p.id} value={p.id}>{p.id === myPlayerId ? 'You' : p.name}</option>)}
+              </select>
+            </div>
+            {p2Target && (
+              <div className="ability-cards-row">
+                {Array.from({ length: p2Target.cardCount }).map((_, idx) => (
+                  <CardComponent
+                    key={idx}
+                    card={p2Target.cards[idx] ?? null}
+                    faceDown={!p2Target.cards[idx]}
+                    selected={selectedP2Card === idx}
+                    onClick={() => setSelectedP2Card(idx)}
+                    size="md"
+                  />
+                ))}
               </div>
             )}
           </div>
-          <div className="ability-step-desc">Swap these two cards?</div>
+
           <div className="ability-actions">
-            <button className="btn btn-primary" onClick={() => emitAbility('do_swap')}>
+            <button
+              className="btn btn-primary"
+              onClick={() => emitAbility('do_swap', { p1Id: selectedP1Player, p1CardIndex: selectedP1Card, p2Id: selectedP2Player, p2CardIndex: selectedP2Card })}
+              disabled={!selectedP1Player || selectedP1Card === null || !selectedP2Player || selectedP2Card === null}
+            >
               Swap!
             </button>
             <button className="btn btn-secondary" onClick={() => emitAbility('skip')}>

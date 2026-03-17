@@ -24,7 +24,7 @@ export type AbilityStep =
   | 'jack_swap_decide'
   | 'jack_swap_select_opp'
   | 'queen_swap_select'
-  | 'king_swap_confirm'
+  | 'king_swap_select'
   | 'done';
 
 export interface ClientAbilityState {
@@ -46,6 +46,13 @@ export interface ClientPlayer {
   cardCount: number;
 }
 
+export interface SwapInfo {
+  p1Id: string;
+  p1CardIndex: number;
+  p2Id: string;
+  p2CardIndex: number;
+}
+
 export interface ClientGameState {
   phase: GamePhase;
   myPlayerId: string;
@@ -58,6 +65,7 @@ export interface ClientGameState {
   lastTurnsLeft: number;
   abilityState: ClientAbilityState | null;
   canCallCambio: boolean;
+  lastSwap?: SwapInfo;
 }
 
 export interface RoomPlayer {

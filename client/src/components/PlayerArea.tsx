@@ -12,6 +12,8 @@ interface PlayerAreaProps {
   targetedCardIndex?: number | null;
   highlightCards?: boolean;
   tempRevealedCards?: Record<number, ClientCard>;
+  peekHighlightIndex?: number | null;
+  swappingCardIndices?: number[];
 }
 
 export default function PlayerArea({
@@ -24,6 +26,8 @@ export default function PlayerArea({
   targetedCardIndex = null,
   highlightCards = false,
   tempRevealedCards = {},
+  peekHighlightIndex = null,
+  swappingCardIndices = [],
 }: PlayerAreaProps) {
   return (
     <div className="player-area">
@@ -34,19 +38,22 @@ export default function PlayerArea({
       <div className="player-cards">
         {player.cards.map((card, idx) => {
           const displayCard = card ?? (isMe ? tempRevealedCards[idx] ?? null : null);
+          const isSwapping = swappingCardIndices.includes(idx);
+          const isPeeked = peekHighlightIndex === idx;
           return (
-            <CardComponent
-              key={idx}
-              card={displayCard}
-              faceDown={!displayCard}
-              selected={selectedCardIndex === idx}
-              targeted={targetedCardIndex === idx}
-              onClick={onCardClick ? () => onCardClick(idx) : undefined}
-              onDoubleClick={onCardDoubleClick ? () => onCardDoubleClick(idx) : undefined}
-              size={size}
-              disabled={!onCardClick && !onCardDoubleClick}
-              glowGreen={highlightCards}
-            />
+            <div key={idx} className={`card-wrapper${isSwapping ? ' card-swapping' : ''}${isPeeked ? ' card-peeked' : ''}`}>
+              <CardComponent
+                card={displayCard}
+                faceDown={!displayCard}
+                selected={selectedCardIndex === idx}
+                targeted={targetedCardIndex === idx}
+                onClick={onCardClick ? () => onCardClick(idx) : undefined}
+                onDoubleClick={onCardDoubleClick ? () => onCardDoubleClick(idx) : undefined}
+                size={size}
+                disabled={!onCardClick && !onCardDoubleClick}
+                glowGreen={highlightCards}
+              />
+            </div>
           );
         })}
         {/* If card count > cards array length (can happen with penalty cards), show extras */}

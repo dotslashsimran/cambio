@@ -1,4 +1,4 @@
-import { Card, ServerGameState, ServerPlayer, AbilityState, AbilityStep, ClientGameState, ClientPlayer, ClientCard, ClientAbilityState } from '../types';
+import { Card, ServerGameState, ServerPlayer, AbilityState, AbilityStep, ClientGameState, ClientPlayer, ClientCard, ClientAbilityState, SwapInfo } from '../types';
 import { createDeck } from './deck';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -142,6 +142,7 @@ export function drawCard(
     discardPile: newDiscardPile,
     drawnCard: card,
     drawnFrom: source,
+    lastSwap: undefined,
   };
 }
 
@@ -433,11 +434,10 @@ export function abilityAction(
 
     if (ability.step === 'jack_swap_select_opp') {
       if (action !== 'do_swap') return { error: 'Expected do_swap action' };
-      const { targetPlayerId, targetCardIndex } = data;
-      const myIdx = ability.peekedOwnIndex;
-      if (myIdx === undefined) return { error: 'No own card peeked' };
+      const { myCardIndex, targetPlayerId, targetCardIndex } = data;
+      if (myCardIndex === undefined || myCardIndex === null) return { error: 'No own card selected' };
 
-      return performSwap(state, playerId, myIdx, targetPlayerId, targetCardIndex, ability);
+      return performSwap(state, playerId, myCardIndex, targetPlayerId, targetCardIndex, ability);
     }
   }
 
@@ -514,7 +514,7 @@ export function abilityAction(
         ...state,
         abilityState: {
           ...ability,
-          step: 'king_swap_confirm',
+          step: 'king_swap_select',
           peekedOppPlayerId: targetPlayerId,
           peekedOppIndex: cardIndex,
           peekedOppCard: peekedCard,
@@ -522,22 +522,14 @@ export function abilityAction(
       };
     }
 
-    if (ability.step === 'king_swap_confirm') {
-      const myIdx = ability.peekedOwnIndex;
-      const oppId = ability.peekedOppPlayerId;
-      const oppIdx = ability.peekedOppIndex;
-
-      if (myIdx === undefined || oppId === undefined || oppIdx === undefined) {
-        return { error: 'Missing swap data' };
-      }
-
+    if (ability.step === 'king_swap_select') {
       if (action === 'skip') {
         return advanceTurn({ ...state, abilityState: { ...ability, step: 'done' } });
       }
-
       if (action !== 'do_swap') return { error: 'Expected do_swap or skip action' };
-
-      return performSwap(state, playerId, myIdx, oppId, oppIdx, ability);
+      // data: { p1Id, p1CardIndex, p2Id, p2CardIndex }
+      const { p1Id, p1CardIndex, p2Id, p2CardIndex } = data;
+      return performSwap(state, p1Id, p1CardIndex, p2Id, p2CardIndex, ability);
     }
   }
 
@@ -580,9 +572,11 @@ function performSwap(
     return p;
   });
 
+  const lastSwap: SwapInfo = { p1Id, p1CardIndex: p1Idx, p2Id, p2CardIndex: p2Idx };
   return advanceTurn({
     ...state,
     players: updatedPlayers,
+    lastSwap,
     abilityState: { ...ability, step: 'done' },
   });
 }
@@ -695,5 +689,6 @@ export function buildClientState(state: ServerGameState, forPlayerId: string): C
     lastTurnsLeft: state.lastTurnsLeft,
     abilityState,
     canCallCambio,
+    lastSwap: state.lastSwap,
   };
 }

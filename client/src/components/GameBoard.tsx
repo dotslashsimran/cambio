@@ -66,7 +66,7 @@ export default function GameBoard({ gameState, myPlayerId, roomCode, chatMessage
     };
   }, [socket]);
 
-  const { phase, players, deckSize, discardPileTop, currentPlayerIndex, drawnCard, abilityState, cambioCalledBy } = gameState;
+  const { phase, players, deckSize, discardPileTop, currentPlayerIndex, drawnCard, abilityState, cambioCalledBy, lastSwap } = gameState;
 
   const me = players.find(p => p.id === myPlayerId)!;
   const opponents = players.filter(p => p.id !== myPlayerId);
@@ -167,15 +167,25 @@ export default function GameBoard({ gameState, myPlayerId, roomCode, chatMessage
 
       {/* Opponents */}
       <div className="opponents-area">
-        {opponents.map(opp => (
-          <PlayerArea
-            key={opp.id}
-            player={opp}
-            isMe={false}
-            size="sm"
-            onCardDoubleClick={canSnap ? (idx) => handleOpponentCardDoubleClick(opp.id, opp.name, idx) : undefined}
-          />
-        ))}
+        {opponents.map(opp => {
+          const oppSwapping = lastSwap
+            ? (lastSwap.p1Id === opp.id ? [lastSwap.p1CardIndex] : lastSwap.p2Id === opp.id ? [lastSwap.p2CardIndex] : [])
+            : [];
+          const oppPeekHighlight = abilityState && !abilityState.isMyAbility
+            ? (abilityState.peekedOppPlayerId === opp.id ? (abilityState.peekedOppIndex ?? null) : null)
+            : null;
+          return (
+            <PlayerArea
+              key={opp.id}
+              player={opp}
+              isMe={false}
+              size="sm"
+              onCardDoubleClick={canSnap ? (idx) => handleOpponentCardDoubleClick(opp.id, opp.name, idx) : undefined}
+              swappingCardIndices={oppSwapping}
+              peekHighlightIndex={oppPeekHighlight}
+            />
+          );
+        })}
       </div>
 
       {/* Center: piles */}
@@ -243,6 +253,12 @@ export default function GameBoard({ gameState, myPlayerId, roomCode, chatMessage
           onCardClick={handleMyCardClick}
           onCardDoubleClick={canSnap && !pendingOpponentSnap ? handleMyCardDoubleClick : undefined}
           tempRevealedCards={tempRevealedCards}
+          swappingCardIndices={lastSwap
+            ? (lastSwap.p1Id === myPlayerId ? [lastSwap.p1CardIndex] : lastSwap.p2Id === myPlayerId ? [lastSwap.p2CardIndex] : [])
+            : []}
+          peekHighlightIndex={abilityState && !abilityState.isMyAbility
+            ? (abilityState.peekedOppPlayerId === myPlayerId ? (abilityState.peekedOppIndex ?? null) : null)
+            : null}
         />
 
         <div className="action-panel-area">
