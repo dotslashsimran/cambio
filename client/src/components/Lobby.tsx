@@ -72,19 +72,14 @@ export default function Lobby({ onJoinedRoom, roomPlayers, hostId, myPlayerId, r
 
   if (view === 'waiting') {
     return (
+      <>
+      {showHTP && <HowToPlay onClose={() => setShowHTP(false)} />}
       <div className="lobby">
-        {showHTP && <HowToPlay onClose={() => setShowHTP(false)} />}
         <div className="lobby-bg-cards" aria-hidden="true">
           {['♠','♥','♦','♣','♠','♥'].map((s, i) => (
             <span key={i} className={`lobby-float lobby-float-${i}`}>{s}</span>
           ))}
         </div>
-        <button className="htp-btn" onClick={() => setShowHTP(true)}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
-          </svg>
-          How to Play
-        </button>
         <div style={{ position: 'absolute', top: 16, right: 16, zIndex: 2 }}>
           <button className="dark-toggle" onClick={onToggleDark}>{darkMode ? (
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -161,25 +156,27 @@ export default function Lobby({ onJoinedRoom, roomPlayers, hostId, myPlayerId, r
               <button type="submit" className="btn btn-secondary btn-sm">Send</button>
             </form>
           </div>
+          <button className="htp-btn-inline" onClick={() => setShowHTP(true)}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
+            </svg>
+            How to Play
+          </button>
         </div>
       </div>
+      </>
     );
   }
 
   return (
-    <div className="lobby">
+    <>
       {showHTP && <HowToPlay onClose={() => setShowHTP(false)} />}
+      <div className="lobby">
       <div className="lobby-bg-cards" aria-hidden="true">
         {['♠','♥','♦','♣','♠','♥'].map((s, i) => (
           <span key={i} className={`lobby-float lobby-float-${i}`}>{s}</span>
         ))}
       </div>
-      <button className="htp-btn" onClick={() => setShowHTP(true)}>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
-        </svg>
-        How to Play
-      </button>
       <div style={{ position: 'absolute', top: 16, right: 16, zIndex: 2 }}>
         <button className="dark-toggle" onClick={onToggleDark}>{darkMode ? (
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -217,6 +214,12 @@ export default function Lobby({ onJoinedRoom, roomPlayers, hostId, myPlayerId, r
                 Join Game
               </button>
             </div>
+            <button className="htp-btn-inline" onClick={() => setShowHTP(true)}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
+              </svg>
+              How to Play
+            </button>
           </>
         ) : joinMode === 'join' ? (
           <>
@@ -244,5 +247,6 @@ export default function Lobby({ onJoinedRoom, roomPlayers, hostId, myPlayerId, r
         ) : null}
       </div>
     </div>
+    </>
   );
 }

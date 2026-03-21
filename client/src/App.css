@@ -1400,33 +1400,30 @@ select option:disabled { color: var(--text-muted); }
   animation: badge-fade-in 0.25s ease both;
 }
 
-/* ─── How To Play Button ─────────────────────── */
-.htp-btn {
-  position: absolute;
-  top: 16px;
-  left: 16px;
-  z-index: 2;
+/* ─── How To Play Button (inside panel) ─────── */
+.htp-btn-inline {
   display: flex;
   align-items: center;
-  gap: 7px;
-  padding: 7px 14px;
-  background: rgba(255,255,255,0.1);
-  border: 1.5px solid rgba(255,255,255,0.2);
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  margin-top: 10px;
+  padding: 8px 14px;
+  background: transparent;
+  border: 1.5px solid rgba(255,255,255,0.15);
   border-radius: var(--pill);
-  color: rgba(255,255,255,0.85);
+  color: rgba(255,255,255,0.5);
   font-family: inherit;
   font-size: 0.8rem;
   font-weight: 600;
   letter-spacing: 0.3px;
   cursor: pointer;
-  backdrop-filter: blur(8px);
-  transition: background 0.18s, border-color 0.18s, color 0.18s, transform 0.15s;
+  transition: border-color 0.18s, color 0.18s, background 0.18s;
 }
-.htp-btn:hover {
-  background: rgba(255,255,255,0.18);
-  border-color: rgba(255,255,255,0.38);
-  color: #fff;
-  transform: translateY(-1px);
+.htp-btn-inline:hover {
+  border-color: rgba(255,255,255,0.35);
+  color: rgba(255,255,255,0.85);
+  background: rgba(255,255,255,0.06);
 }
 
 /* ─── How To Play Overlay ────────────────────── */
