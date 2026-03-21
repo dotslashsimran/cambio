@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { getSocket } from '../socket';
 import { RoomPlayer } from '../types';
+import HowToPlay from './HowToPlay';
 
 interface LobbyProps {
   onJoinedRoom: (playerId: string, roomCode: string) => void;
@@ -22,6 +23,7 @@ export default function Lobby({ onJoinedRoom, roomPlayers, hostId, myPlayerId, r
   const [joinMode, setJoinMode] = useState<'create' | 'join' | null>(null);
   const [chatInput, setChatInput] = useState('');
   const [error, setError] = useState('');
+  const [showHTP, setShowHTP] = useState(false);
   const socket = getSocket();
 
   const handleCreateRoom = () => {
@@ -71,11 +73,18 @@ export default function Lobby({ onJoinedRoom, roomPlayers, hostId, myPlayerId, r
   if (view === 'waiting') {
     return (
       <div className="lobby">
+        {showHTP && <HowToPlay onClose={() => setShowHTP(false)} />}
         <div className="lobby-bg-cards" aria-hidden="true">
           {['♠','♥','♦','♣','♠','♥'].map((s, i) => (
             <span key={i} className={`lobby-float lobby-float-${i}`}>{s}</span>
           ))}
         </div>
+        <button className="htp-btn" onClick={() => setShowHTP(true)}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
+          </svg>
+          How to Play
+        </button>
         <div style={{ position: 'absolute', top: 16, right: 16, zIndex: 2 }}>
           <button className="dark-toggle" onClick={onToggleDark}>{darkMode ? (
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -159,11 +168,18 @@ export default function Lobby({ onJoinedRoom, roomPlayers, hostId, myPlayerId, r
 
   return (
     <div className="lobby">
+      {showHTP && <HowToPlay onClose={() => setShowHTP(false)} />}
       <div className="lobby-bg-cards" aria-hidden="true">
         {['♠','♥','♦','♣','♠','♥'].map((s, i) => (
           <span key={i} className={`lobby-float lobby-float-${i}`}>{s}</span>
         ))}
       </div>
+      <button className="htp-btn" onClick={() => setShowHTP(true)}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
+        </svg>
+        How to Play
+      </button>
       <div style={{ position: 'absolute', top: 16, right: 16, zIndex: 2 }}>
         <button className="dark-toggle" onClick={onToggleDark}>{darkMode ? (
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
