@@ -1321,8 +1321,8 @@ select option:disabled { color: var(--text-muted); }
 ═══════════════════════════════════════════════ */
 
 @keyframes drawer-slide-in {
-  from { transform: translateX(-100%); opacity: 0; }
-  to   { transform: translateX(0); opacity: 1; }
+  from { transform: translate(-100%, -50%); opacity: 0; }
+  to   { transform: translate(0, -50%); opacity: 1; }
 }
 
 .ability-drawer {
