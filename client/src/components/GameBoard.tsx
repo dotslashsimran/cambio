@@ -51,6 +51,10 @@ export default function GameBoard({ gameState, myPlayerId, roomCode, chatMessage
   // ── Ability inline state ──────────────────────────────────────
   const [abilitySwapSel1, setAbilitySwapSel1] = useState<SwapSel | null>(null);
   const [abilitySwapSel2, setAbilitySwapSel2] = useState<SwapSel | null>(null);
+  // Temporarily revealed cards during ability peeks (like initial game peek)
+  const [abilityOwnReveal, setAbilityOwnReveal] = useState<Record<number, ClientCard>>({});
+  const [abilityOppReveal, setAbilityOppReveal] = useState<{ playerId: string; cards: Record<number, ClientCard> } | null>(null);
+  const abilityRevealTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   const socket = getSocket();
 
@@ -73,6 +77,66 @@ export default function GameBoard({ gameState, myPlayerId, roomCode, chatMessage
     setAbilitySwapSel1(null);
     setAbilitySwapSel2(null);
   }, [abilityState?.step]);
+
+  // ── Inline card reveal (like initial peek) ───────────────────
+  useEffect(() => {
+    abilityRevealTimers.current.forEach(clearTimeout);
+    abilityRevealTimers.current = [];
+
+    if (!abilityState?.isMyAbility) {
+      setAbilityOwnReveal({});
+      setAbilityOppReveal(null);
+      return;
+    }
+
+    const { step, peekedOwnIndex, peekedOwnCard, peekedOppPlayerId, peekedOppIndex, peekedOppCard } = abilityState;
+    const REVEAL_MS = 3000;
+
+    if (step === 'peek_own_reveal') {
+      // 7/8: flip own card face-up, auto-advance after timeout
+      if (peekedOwnCard !== undefined && peekedOwnIndex !== undefined) {
+        setAbilityOwnReveal({ [peekedOwnIndex]: peekedOwnCard });
+        const t = setTimeout(() => {
+          setAbilityOwnReveal({});
+          socket.emit('ability_action', { action: 'close_peek', data: {} });
+        }, REVEAL_MS);
+        abilityRevealTimers.current.push(t);
+      }
+    } else if (step === 'peek_opp_reveal') {
+      // 9/10 or King: flip opp card (and own for King) face-up, auto-advance
+      if (peekedOppPlayerId && peekedOppCard !== undefined && peekedOppIndex !== undefined) {
+        setAbilityOppReveal({ playerId: peekedOppPlayerId, cards: { [peekedOppIndex]: peekedOppCard } });
+      }
+      if (peekedOwnCard !== undefined && peekedOwnIndex !== undefined) {
+        setAbilityOwnReveal({ [peekedOwnIndex]: peekedOwnCard });
+      }
+      const t = setTimeout(() => {
+        setAbilityOwnReveal({});
+        setAbilityOppReveal(null);
+        socket.emit('ability_action', { action: 'close_peek', data: {} });
+      }, REVEAL_MS);
+      abilityRevealTimers.current.push(t);
+    } else if (step === 'jack_swap_decide') {
+      // Jack: show own peeked card briefly (client-side only, no server action)
+      if (peekedOwnCard !== undefined && peekedOwnIndex !== undefined) {
+        setAbilityOwnReveal({ [peekedOwnIndex]: peekedOwnCard });
+        const t = setTimeout(() => setAbilityOwnReveal({}), REVEAL_MS);
+        abilityRevealTimers.current.push(t);
+      }
+    } else if (step === 'queen_swap_select') {
+      // Queen: show opp peeked card briefly (client-side only, no server action)
+      if (peekedOppPlayerId && peekedOppCard !== undefined && peekedOppIndex !== undefined) {
+        setAbilityOppReveal({ playerId: peekedOppPlayerId, cards: { [peekedOppIndex]: peekedOppCard } });
+        const t = setTimeout(() => setAbilityOppReveal(null), REVEAL_MS);
+        abilityRevealTimers.current.push(t);
+      }
+    } else {
+      setAbilityOwnReveal({});
+      setAbilityOppReveal(null);
+    }
+
+    return () => { abilityRevealTimers.current.forEach(clearTimeout); };
+  }, [abilityState?.step, abilityState?.isMyAbility]);
 
   const emitAbility = useCallback((action: string, data: any = {}) => {
     socket.emit('ability_action', { action, data });
@@ -406,6 +470,7 @@ export default function GameBoard({ gameState, myPlayerId, roomCode, chatMessage
               abilityBadge={abilityBadge}
               abilityHighlight={isOppAbilityTarget}
               abilitySelectedIndices={oppAbilitySelectedIndices(opp.id)}
+              abilityRevealedCards={abilityOppReveal?.playerId === opp.id ? abilityOppReveal.cards : undefined}
             />
           );
         })}
@@ -453,6 +518,9 @@ export default function GameBoard({ gameState, myPlayerId, roomCode, chatMessage
         {/* Ability inline hint bar */}
         {isAbilityMode && (
           <div className="ability-hint-bar">
+            {(abilityStep === 'peek_own_reveal' || abilityStep === 'peek_opp_reveal') && (
+              <span style={{ color: 'var(--lav-dark)', fontWeight: 700 }}>👀 Look at the board — card revealed!</span>
+            )}
             {abilityStep === 'peek_own_select' && (
               <span>Click one of your cards to peek it</span>
             )}
@@ -462,7 +530,7 @@ export default function GameBoard({ gameState, myPlayerId, roomCode, chatMessage
             {abilityStep === 'jack_swap_decide' && abilityState && (
               <>
                 {abilityState.peekedOwnCard && (
-                  <CardComponent card={abilityState.peekedOwnCard} size="sm" disabled />
+                  <CardComponent card={abilityState.peekedOwnCard} size="md" disabled />
                 )}
                 <span>Swap this card with an opponent's?</span>
                 {hasValidOppForJack && (
@@ -473,8 +541,14 @@ export default function GameBoard({ gameState, myPlayerId, roomCode, chatMessage
                 </button>
               </>
             )}
-            {isSwapStep && (
+            {isSwapStep && abilityState && (
               <>
+                {abilityState.peekedOwnCard && (
+                  <CardComponent card={abilityState.peekedOwnCard} size="sm" disabled />
+                )}
+                {abilityState.peekedOppCard && (
+                  <CardComponent card={abilityState.peekedOppCard} size="sm" disabled />
+                )}
                 <span>{swapHintText()}</span>
                 {canConfirmSwap() && (
                   <button className="btn btn-primary btn-sm" onClick={emitAbilitySwap}>Swap!</button>
@@ -510,7 +584,7 @@ export default function GameBoard({ gameState, myPlayerId, roomCode, chatMessage
           highlightCards={!!pendingOpponentSnap}
           onCardClick={handleMyCardClick}
           onCardDoubleClick={canSnap && !pendingOpponentSnap ? handleMyCardDoubleClick : undefined}
-          tempRevealedCards={tempRevealedCards}
+          tempRevealedCards={{ ...tempRevealedCards, ...abilityOwnReveal }}
           swappingCardIndices={lastSwap
             ? (lastSwap.p1Id === myPlayerId ? [lastSwap.p1CardIndex] : lastSwap.p2Id === myPlayerId ? [lastSwap.p2CardIndex] : [])
             : []}
@@ -534,7 +608,8 @@ export default function GameBoard({ gameState, myPlayerId, roomCode, chatMessage
         </div>
       </div>
 
-      {phase === 'ability' && abilityState && <AbilityModal gameState={gameState} />}
+      {/* AbilityModal handled entirely inline */}
+      <AbilityModal />
       {phase === 'game_over' && <GameOver gameState={gameState} myPlayerId={myPlayerId} />}
 
       {/* Chat sidebar */}

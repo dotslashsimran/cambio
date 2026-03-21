@@ -12,6 +12,7 @@ interface PlayerAreaProps {
   targetedCardIndex?: number | null;
   highlightCards?: boolean;
   tempRevealedCards?: Record<number, ClientCard>;
+  abilityRevealedCards?: Record<number, ClientCard>;
   peekHighlightIndex?: number | null;
   swappingCardIndices?: number[];
   snapHighlightIndex?: number | null;
@@ -33,6 +34,7 @@ export default function PlayerArea({
   targetedCardIndex = null,
   highlightCards = false,
   tempRevealedCards = {},
+  abilityRevealedCards = {},
   peekHighlightIndex = null,
   swappingCardIndices = [],
   snapHighlightIndex = null,
@@ -55,7 +57,7 @@ export default function PlayerArea({
       )}
       <div className="player-cards">
         {player.cards.map((card, idx) => {
-          const displayCard = card ?? (isMe ? tempRevealedCards[idx] ?? null : null);
+          const displayCard = card ?? abilityRevealedCards[idx] ?? (isMe ? tempRevealedCards[idx] ?? null : null);
           const isSwapping = swappingCardIndices.includes(idx);
           const isPeeked = peekHighlightIndex === idx;
           const isSnapped = snapHighlightIndex === idx;
