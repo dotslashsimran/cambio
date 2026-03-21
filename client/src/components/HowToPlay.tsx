@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 
 interface HowToPlayProps {
   onClose: () => void;
@@ -60,7 +61,7 @@ export default function HowToPlay({ onClose }: HowToPlayProps) {
     return () => window.removeEventListener('keydown', handler);
   }, [onClose]);
 
-  return (
+  return createPortal(
     <div className="htp-overlay" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="htp-panel">
         {/* Header */}
@@ -207,6 +208,7 @@ export default function HowToPlay({ onClose }: HowToPlayProps) {
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
