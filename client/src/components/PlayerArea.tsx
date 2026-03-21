@@ -19,6 +19,8 @@ interface PlayerAreaProps {
   replacedCardIndex?: number | null;
   isFrozen?: boolean;
   abilityBadge?: string;
+  abilityHighlight?: boolean;
+  abilitySelectedIndices?: number[];
 }
 
 export default function PlayerArea({
@@ -38,6 +40,8 @@ export default function PlayerArea({
   replacedCardIndex = null,
   isFrozen = false,
   abilityBadge,
+  abilityHighlight = false,
+  abilitySelectedIndices = [],
 }: PlayerAreaProps) {
   return (
     <div className={`player-area${isFrozen ? ' player-frozen' : ''}`}>
@@ -56,19 +60,21 @@ export default function PlayerArea({
           const isPeeked = peekHighlightIndex === idx;
           const isSnapped = snapHighlightIndex === idx;
           const isReplaced = replacedCardIndex === idx;
+          const isAbilitySelected = abilitySelectedIndices.includes(idx);
           const snapClass = isSnapped ? (snapHighlightSuccess ? ' card-snap-success' : ' card-snap-fail') : '';
           return (
             <div key={idx} className={`card-wrapper${isSwapping ? ' card-swapping' : ''}${isPeeked ? ' card-peeked' : ''}${snapClass}${isReplaced ? ' card-replaced' : ''}`}>
               <CardComponent
                 card={displayCard}
                 faceDown={!displayCard}
-                selected={selectedCardIndex === idx}
+                selected={selectedCardIndex === idx || isAbilitySelected}
                 targeted={targetedCardIndex === idx}
                 onClick={onCardClick ? () => onCardClick(idx) : undefined}
                 onDoubleClick={onCardDoubleClick ? () => onCardDoubleClick(idx) : undefined}
                 size={size}
                 disabled={!onCardClick && !onCardDoubleClick}
                 glowGreen={highlightCards}
+                abilityHighlight={abilityHighlight && !isAbilitySelected}
               />
             </div>
           );

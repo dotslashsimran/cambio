@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react'; // useCallback kept for emitAbility
 import { ClientGameState, ClientCard } from '../types';
 import { getSocket } from '../socket';
 import PlayerArea from './PlayerArea';
@@ -17,7 +17,6 @@ interface GameBoardProps {
   onToggleDark: () => void;
 }
 
-// When snapping an opponent's card, we need the player to pick which of their own cards to give
 interface PendingOpponentSnap {
   targetPlayerId: string;
   targetCardIndex: number;
@@ -32,6 +31,11 @@ interface SnapAnimation {
   targetCardIndex?: number | null;
 }
 
+interface SwapSel {
+  playerId: string;
+  cardIndex: number;
+}
+
 export default function GameBoard({ gameState, myPlayerId, roomCode, chatMessages, darkMode, onToggleDark }: GameBoardProps) {
   const [selectedCardIndex, setSelectedCardIndex] = useState<number | null>(null);
   const [chatInput, setChatInput] = useState('');
@@ -43,8 +47,110 @@ export default function GameBoard({ gameState, myPlayerId, roomCode, chatMessage
   const peekTimers = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
   const [snapCountdown, setSnapCountdown] = useState<number | null>(null);
   const pendingSnapIntentRef = useRef<PendingOpponentSnap | null>(null);
+
+  // ── Ability inline state ──────────────────────────────────────
+  const [abilitySwapSel1, setAbilitySwapSel1] = useState<SwapSel | null>(null);
+  const [abilitySwapSel2, setAbilitySwapSel2] = useState<SwapSel | null>(null);
+
   const socket = getSocket();
 
+  const { phase, players, deckSize, discardPileTop, currentPlayerIndex, drawnCard, abilityState, cambioCalledBy, lastSwap, lastReplace } = gameState;
+
+  const me = players.find(p => p.id === myPlayerId)!;
+  const opponents = players.filter(p => p.id !== myPlayerId);
+  const isMyTurn = me?.isCurrentTurn ?? false;
+  const canSnap = (phase === 'playing' || phase === 'last_turns') && !!discardPileTop;
+
+  // ── Ability helpers ───────────────────────────────────────────
+  const isAbilityMode = phase === 'ability' && !!abilityState?.isMyAbility;
+  const abilityStep = abilityState?.step ?? null;
+  const abilityRank = abilityState?.abilityCard.rank ?? null;
+  const SWAP_STEPS = new Set(['jack_swap_select_opp', 'queen_swap_select', 'king_swap_select']);
+  const isSwapStep = isAbilityMode && abilityStep !== null && SWAP_STEPS.has(abilityStep);
+
+  // Reset swap selections when ability step changes
+  useEffect(() => {
+    setAbilitySwapSel1(null);
+    setAbilitySwapSel2(null);
+  }, [abilityState?.step]);
+
+  const emitAbility = useCallback((action: string, data: any = {}) => {
+    socket.emit('ability_action', { action, data });
+    setAbilitySwapSel1(null);
+    setAbilitySwapSel2(null);
+  }, [socket]);
+
+  const handleAbilitySwapSelectClean = (playerId: string, cardIndex: number) => {
+    if (abilitySwapSel1?.playerId === playerId && abilitySwapSel1?.cardIndex === cardIndex) {
+      setAbilitySwapSel1(abilitySwapSel2);
+      setAbilitySwapSel2(null);
+      return;
+    }
+    if (abilitySwapSel2?.playerId === playerId && abilitySwapSel2?.cardIndex === cardIndex) {
+      setAbilitySwapSel2(null);
+      return;
+    }
+    if (!abilitySwapSel1) { setAbilitySwapSel1({ playerId, cardIndex }); return; }
+    if (!abilitySwapSel2) { setAbilitySwapSel2({ playerId, cardIndex }); return; }
+    // Both set — replace sel2
+    setAbilitySwapSel2({ playerId, cardIndex });
+  };
+
+  const myAbilityHighlight = isAbilityMode && (
+    abilityStep === 'peek_own_select' || isSwapStep
+  );
+
+  const oppAbilityHighlight = (oppId: string) =>
+    isAbilityMode &&
+    (abilityStep === 'peek_opp_select' || isSwapStep) &&
+    oppId !== cambioCalledBy;
+
+  const myAbilitySelectedIndices = [
+    ...(abilitySwapSel1?.playerId === myPlayerId ? [abilitySwapSel1.cardIndex] : []),
+    ...(abilitySwapSel2?.playerId === myPlayerId ? [abilitySwapSel2.cardIndex] : []),
+  ];
+
+  const oppAbilitySelectedIndices = (oppId: string) => [
+    ...(abilitySwapSel1?.playerId === oppId ? [abilitySwapSel1.cardIndex] : []),
+    ...(abilitySwapSel2?.playerId === oppId ? [abilitySwapSel2.cardIndex] : []),
+  ];
+
+  const canConfirmSwap = (): boolean => {
+    if (!abilitySwapSel1 || !abilitySwapSel2) return false;
+    if (abilityStep === 'jack_swap_select_opp') {
+      const oneIsMine = abilitySwapSel1.playerId === myPlayerId || abilitySwapSel2.playerId === myPlayerId;
+      const oneIsOpp = abilitySwapSel1.playerId !== myPlayerId || abilitySwapSel2.playerId !== myPlayerId;
+      return oneIsMine && oneIsOpp;
+    }
+    return true;
+  };
+
+  const emitAbilitySwap = () => {
+    if (!abilitySwapSel1 || !abilitySwapSel2 || !abilityStep) return;
+    if (abilityStep === 'jack_swap_select_opp') {
+      const myCard = abilitySwapSel1.playerId === myPlayerId ? abilitySwapSel1 : abilitySwapSel2;
+      const oppCard = myCard === abilitySwapSel1 ? abilitySwapSel2 : abilitySwapSel1;
+      emitAbility('do_swap', { myCardIndex: myCard.cardIndex, targetPlayerId: oppCard.playerId, targetCardIndex: oppCard.cardIndex });
+    } else {
+      emitAbility('do_swap', {
+        p1Id: abilitySwapSel1.playerId, p1CardIndex: abilitySwapSel1.cardIndex,
+        p2Id: abilitySwapSel2.playerId, p2CardIndex: abilitySwapSel2.cardIndex,
+      });
+    }
+  };
+
+  const handleAbilityOppCardClick = (playerId: string, cardIndex: number) => {
+    if (!isAbilityMode) return;
+    if (abilityStep === 'peek_opp_select') {
+      emitAbility('peek_opp', { targetPlayerId: playerId, cardIndex });
+      return;
+    }
+    if (isSwapStep) {
+      handleAbilitySwapSelectClean(playerId, cardIndex);
+    }
+  };
+
+  // ── Phase / turn resets ───────────────────────────────────────
   useEffect(() => {
     if (gameState.phase !== 'peek') {
       setPeekedIndices(new Set());
@@ -52,7 +158,6 @@ export default function GameBoard({ gameState, myPlayerId, roomCode, chatMessage
     }
   }, [gameState.phase]);
 
-  // Countdown ticker for snap window
   useEffect(() => {
     const endsAt = gameState.snapWindowEndsAt;
     if (!endsAt) { setSnapCountdown(null); return; }
@@ -112,13 +217,6 @@ export default function GameBoard({ gameState, myPlayerId, roomCode, chatMessage
     };
   }, [socket]);
 
-  const { phase, players, deckSize, discardPileTop, currentPlayerIndex, drawnCard, abilityState, cambioCalledBy, lastSwap, lastReplace } = gameState;
-
-  const me = players.find(p => p.id === myPlayerId)!;
-  const opponents = players.filter(p => p.id !== myPlayerId);
-  const isMyTurn = me?.isCurrentTurn ?? false;
-  const canSnap = (phase === 'playing' || phase === 'last_turns') && !!discardPileTop;
-
   useEffect(() => {
     setSelectedCardIndex(null);
     setPendingOpponentSnap(null);
@@ -127,11 +225,22 @@ export default function GameBoard({ gameState, myPlayerId, roomCode, chatMessage
   // Double-click my own card → snap attempt
   const handleMyCardDoubleClick = (index: number) => {
     if (!canSnap) return;
-    if (myPlayerId === cambioCalledBy) return; // frozen
+    if (myPlayerId === cambioCalledBy) return;
     socket.emit('snap', { targetPlayerId: null, targetCardIndex: null, myCardIndex: index });
   };
 
   const handleMyCardClick = (index: number) => {
+    // Ability: peek own select
+    if (isAbilityMode && abilityStep === 'peek_own_select') {
+      emitAbility('peek_own', { cardIndex: index });
+      return;
+    }
+    // Ability: swap select
+    if (isAbilityMode && isSwapStep) {
+      handleAbilitySwapSelectClean(myPlayerId, index);
+      return;
+    }
+
     if (phase === 'peek') {
       if (!peekedIndices.has(index) && peekedIndices.size < 2) {
         socket.emit('peek_card', { cardIndex: index });
@@ -139,7 +248,6 @@ export default function GameBoard({ gameState, myPlayerId, roomCode, chatMessage
       return;
     }
 
-    // If we're in the middle of picking a card to give after snapping an opponent
     if (pendingOpponentSnap) {
       socket.emit('snap', {
         targetPlayerId: pendingOpponentSnap.targetPlayerId,
@@ -158,10 +266,9 @@ export default function GameBoard({ gameState, myPlayerId, roomCode, chatMessage
     }
   };
 
-  // Double-click opponent card → reserve snap server-side first, then show card picker on confirmation
   const handleOpponentCardDoubleClick = (playerId: string, playerName: string, cardIndex: number) => {
     if (!canSnap) return;
-    if (playerId === cambioCalledBy) return; // frozen
+    if (playerId === cambioCalledBy) return;
     pendingSnapIntentRef.current = { targetPlayerId: playerId, targetCardIndex: cardIndex, targetPlayerName: playerName };
     socket.emit('snap_intent', { targetPlayerId: playerId, targetCardIndex: cardIndex });
   };
@@ -182,6 +289,21 @@ export default function GameBoard({ gameState, myPlayerId, roomCode, chatMessage
     waiting: 'Waiting', peek: 'Peek Phase', playing: 'Playing',
     ability: 'Ability', last_turns: 'Final Turns', game_over: 'Game Over',
   };
+
+  // Swap hint text
+  const swapHintText = () => {
+    if (!isSwapStep) return '';
+    if (abilityStep === 'jack_swap_select_opp') {
+      if (!abilitySwapSel1) return 'Click your card';
+      if (!abilitySwapSel2) return "Click an opponent's card";
+      return 'Ready!';
+    }
+    if (!abilitySwapSel1) return 'Click the 1st card';
+    if (!abilitySwapSel2) return 'Click the 2nd card';
+    return 'Ready!';
+  };
+
+  const hasValidOppForJack = opponents.some(p => p.id !== cambioCalledBy);
 
   return (
     <div className="game-board">
@@ -266,12 +388,14 @@ export default function GameBoard({ gameState, myPlayerId, roomCode, chatMessage
               ? (snapAnim.targetCardIndex ?? null)
               : null;
           const oppReplaced = lastReplace?.playerId === opp.id ? lastReplace.cardIndex : null;
+          const isOppAbilityTarget = oppAbilityHighlight(opp.id);
           return (
             <PlayerArea
               key={opp.id}
               player={opp}
               isMe={false}
               size="sm"
+              onCardClick={isOppAbilityTarget ? (idx) => handleAbilityOppCardClick(opp.id, idx) : undefined}
               onCardDoubleClick={canSnap && opp.id !== cambioCalledBy ? (idx) => handleOpponentCardDoubleClick(opp.id, opp.name, idx) : undefined}
               swappingCardIndices={oppSwapping}
               peekHighlightIndex={oppPeekHighlight}
@@ -280,6 +404,8 @@ export default function GameBoard({ gameState, myPlayerId, roomCode, chatMessage
               replacedCardIndex={oppReplaced}
               isFrozen={opp.id === cambioCalledBy}
               abilityBadge={abilityBadge}
+              abilityHighlight={isOppAbilityTarget}
+              abilitySelectedIndices={oppAbilitySelectedIndices(opp.id)}
             />
           );
         })}
@@ -324,7 +450,42 @@ export default function GameBoard({ gameState, myPlayerId, roomCode, chatMessage
 
       {/* My area */}
       <div className="my-area">
-        {phase === 'peek' && (
+        {/* Ability inline hint bar */}
+        {isAbilityMode && (
+          <div className="ability-hint-bar">
+            {abilityStep === 'peek_own_select' && (
+              <span>Click one of your cards to peek it</span>
+            )}
+            {abilityStep === 'peek_opp_select' && (
+              <span>Click an opponent's card to peek it</span>
+            )}
+            {abilityStep === 'jack_swap_decide' && abilityState && (
+              <>
+                {abilityState.peekedOwnCard && (
+                  <CardComponent card={abilityState.peekedOwnCard} size="sm" disabled />
+                )}
+                <span>Swap this card with an opponent's?</span>
+                {hasValidOppForJack && (
+                  <button className="btn btn-primary btn-sm" onClick={() => emitAbility('swap')}>Swap</button>
+                )}
+                <button className="btn btn-ghost btn-sm" onClick={() => emitAbility('skip')}>
+                  {hasValidOppForJack ? 'Skip' : 'OK'}
+                </button>
+              </>
+            )}
+            {isSwapStep && (
+              <>
+                <span>{swapHintText()}</span>
+                {canConfirmSwap() && (
+                  <button className="btn btn-primary btn-sm" onClick={emitAbilitySwap}>Swap!</button>
+                )}
+                <button className="btn btn-ghost btn-sm" onClick={() => emitAbility('skip')}>Skip</button>
+              </>
+            )}
+          </div>
+        )}
+
+        {phase === 'peek' && !isAbilityMode && (
           <div className="peek-instruction">
             Click 2 cards to peek ({myPeekedCount}/2)
             {myPeekedCount >= 2 && (
@@ -334,7 +495,7 @@ export default function GameBoard({ gameState, myPlayerId, roomCode, chatMessage
             )}
           </div>
         )}
-        {canSnap && !pendingOpponentSnap && (
+        {canSnap && !pendingOpponentSnap && !isAbilityMode && (
           <div className="snap-hint">Double-click any card to snap it against the discard</div>
         )}
         {pendingOpponentSnap && (
@@ -364,6 +525,8 @@ export default function GameBoard({ gameState, myPlayerId, roomCode, chatMessage
           snapHighlightSuccess={snapAnim?.success ?? true}
           replacedCardIndex={lastReplace?.playerId === myPlayerId ? lastReplace.cardIndex : null}
           isFrozen={myPlayerId === cambioCalledBy}
+          abilityHighlight={myAbilityHighlight}
+          abilitySelectedIndices={myAbilitySelectedIndices}
         />
 
         <div className="action-panel-area">

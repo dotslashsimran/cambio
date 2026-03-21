@@ -11,6 +11,7 @@ interface CardComponentProps {
   size?: 'sm' | 'md' | 'lg';
   disabled?: boolean;
   glowGreen?: boolean;
+  abilityHighlight?: boolean;
 }
 
 const BASE = 'https://webisso.github.io/playing-cards/';
@@ -35,6 +36,7 @@ export default function CardComponent({
   size = 'md',
   disabled = false,
   glowGreen = false,
+  abilityHighlight = false,
 }: CardComponentProps) {
   const showFaceDown = faceDown || !card;
 
@@ -46,6 +48,7 @@ export default function CardComponent({
     targeted ? 'card-targeted' : '',
     disabled ? 'card-disabled' : '',
     glowGreen ? 'card-glow-green' : '',
+    abilityHighlight ? 'card-ability-select' : '',
     !card && !faceDown ? 'card-empty' : '',
   ].filter(Boolean).join(' ');
 
