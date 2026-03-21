@@ -15,6 +15,14 @@ export default function App() {
   const [hostId, setHostId] = useState<string>('');
   const [chatMessages, setChatMessages] = useState<Array<{ playerName: string; message: string; timestamp: number }>>([]);
   const [notification, setNotification] = useState<string>('');
+  const [darkMode, setDarkMode] = useState<boolean>(() => localStorage.getItem('cambio-dark') === 'true');
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = darkMode ? 'dark' : 'light';
+    localStorage.setItem('cambio-dark', String(darkMode));
+  }, [darkMode]);
+
+  const toggleDark = () => setDarkMode(d => !d);
 
   useEffect(() => {
     const socket = getSocket();
@@ -81,6 +89,8 @@ export default function App() {
           myPlayerId={myPlayerId}
           roomCode={roomCode}
           chatMessages={chatMessages}
+          darkMode={darkMode}
+          onToggleDark={toggleDark}
         />
       )}
 
@@ -90,6 +100,8 @@ export default function App() {
           myPlayerId={myPlayerId}
           roomCode={roomCode}
           chatMessages={chatMessages}
+          darkMode={darkMode}
+          onToggleDark={toggleDark}
         />
       )}
     </div>

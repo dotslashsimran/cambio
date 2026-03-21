@@ -13,6 +13,8 @@ interface GameBoardProps {
   myPlayerId: string;
   roomCode: string;
   chatMessages: Array<{ playerName: string; message: string; timestamp: number }>;
+  darkMode: boolean;
+  onToggleDark: () => void;
 }
 
 // When snapping an opponent's card, we need the player to pick which of their own cards to give
@@ -30,7 +32,7 @@ interface SnapAnimation {
   targetCardIndex?: number | null;
 }
 
-export default function GameBoard({ gameState, myPlayerId, roomCode, chatMessages }: GameBoardProps) {
+export default function GameBoard({ gameState, myPlayerId, roomCode, chatMessages, darkMode, onToggleDark }: GameBoardProps) {
   const [selectedCardIndex, setSelectedCardIndex] = useState<number | null>(null);
   const [chatInput, setChatInput] = useState('');
   const [tempRevealedCards, setTempRevealedCards] = useState<Record<number, ClientCard>>({});
@@ -194,7 +196,10 @@ export default function GameBoard({ gameState, myPlayerId, roomCode, chatMessage
           )}
           <div className={`phase-badge phase-${phase}`}>{phaseLabel[phase] ?? phase}</div>
         </div>
-        <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)' }}>Room: {roomCode}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)' }}>Room: {roomCode}</div>
+          <button className="dark-toggle" onClick={onToggleDark}>{darkMode ? '☀️' : '🌙'}</button>
+        </div>
       </div>
 
       {/* Snap result toast */}

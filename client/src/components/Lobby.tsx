@@ -9,11 +9,13 @@ interface LobbyProps {
   myPlayerId: string;
   roomCode: string;
   chatMessages: Array<{ playerName: string; message: string; timestamp: number }>;
+  darkMode: boolean;
+  onToggleDark: () => void;
 }
 
 type LobbyView = 'home' | 'waiting';
 
-export default function Lobby({ onJoinedRoom, roomPlayers, hostId, myPlayerId, roomCode, chatMessages }: LobbyProps) {
+export default function Lobby({ onJoinedRoom, roomPlayers, hostId, myPlayerId, roomCode, chatMessages, darkMode, onToggleDark }: LobbyProps) {
   const [view, setView] = useState<LobbyView>('home');
   const [playerName, setPlayerName] = useState('');
   const [joinCode, setJoinCode] = useState('');
@@ -73,6 +75,9 @@ export default function Lobby({ onJoinedRoom, roomPlayers, hostId, myPlayerId, r
           {['♠','♥','♦','♣','♠','♥'].map((s, i) => (
             <span key={i} className={`lobby-float lobby-float-${i}`}>{s}</span>
           ))}
+        </div>
+        <div style={{ position: 'absolute', top: 16, right: 16, zIndex: 2 }}>
+          <button className="dark-toggle" onClick={onToggleDark}>{darkMode ? '☀️ Light' : '🌙 Dark'}</button>
         </div>
         <div className="lobby-title">CAMBIO</div>
         <div className="lobby-subtitle">2–6 Players • Lowest Score Wins</div>
@@ -150,6 +155,9 @@ export default function Lobby({ onJoinedRoom, roomPlayers, hostId, myPlayerId, r
         {['♠','♥','♦','♣','♠','♥'].map((s, i) => (
           <span key={i} className={`lobby-float lobby-float-${i}`}>{s}</span>
         ))}
+      </div>
+      <div style={{ position: 'absolute', top: 16, right: 16, zIndex: 2 }}>
+        <button className="dark-toggle" onClick={onToggleDark}>{darkMode ? '☀️ Light' : '🌙 Dark'}</button>
       </div>
       <div className="lobby-title">CAMBIO</div>
       <div className="lobby-subtitle">The Card Game of Bluffing & Memory</div>
