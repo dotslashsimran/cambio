@@ -73,6 +73,7 @@ export interface ClientGameState {
   lastSwap?: SwapInfo;
   lastReplace?: ReplaceInfo;
   snapWindowEndsAt?: number;
+  pendingSnapExchange?: { snapperId: string; targetPlayerId: string };
 }
 
 export interface RoomPlayer {

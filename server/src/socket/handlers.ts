@@ -11,7 +11,7 @@ import {
   replaceCard,
   discardDrawn,
   snap,
-  reserveSnap,
+  giveSnapCard,
   abilityAction,
   buildClientState,
 } from '../game/engine';
@@ -208,43 +208,12 @@ export function registerHandlers(io: Server, socket: Socket): void {
     broadcastWithSnapWindow(io, room, result, wasLastTurns);
   });
 
-  // Snap intent — reserves opponent's card before the player picks which card to give
-  socket.on('snap_intent', (data: { targetPlayerId: string; targetCardIndex: number }) => {
-    const room = getRoom(socket.data.roomCode);
-    if (!room || !room.gameState) return;
-
-    const result = reserveSnap(room.gameState, socket.data.playerId, data.targetPlayerId, data.targetCardIndex);
-    if (result.success) {
-      room.gameState = result.state;
-      // Auto-expire reservation after 5s in case the player never follows through
-      const playerId = socket.data.playerId;
-      setTimeout(() => {
-        const r = getRoom(socket.data.roomCode);
-        if (!r?.gameState) return;
-        const res = r.gameState.snapReservation;
-        if (res && res.byPlayerId === playerId && res.targetPlayerId === data.targetPlayerId && res.targetCardIndex === data.targetCardIndex) {
-          r.gameState = { ...r.gameState, snapReservation: undefined };
-        }
-      }, 5000);
-    }
-    socket.emit('snap_intent_result', { success: result.success, message: result.message });
-  });
-
-  // Cancel a pending snap intent (player dismissed the card picker)
-  socket.on('snap_intent_cancel', () => {
-    const room = getRoom(socket.data.roomCode);
-    if (!room?.gameState) return;
-    const res = room.gameState.snapReservation;
-    if (res && res.byPlayerId === socket.data.playerId) {
-      room.gameState = { ...room.gameState, snapReservation: undefined };
-    }
-  });
-
-  // Snap
+  // Snap — for own card: provide myCardIndex. For opponent card: myCardIndex=null triggers
+  // two-phase flow (card snatched immediately, then snap_give_card to complete exchange).
   socket.on('snap', (data: {
     targetPlayerId: string | null;
     targetCardIndex: number | null;
-    myCardIndex: number;
+    myCardIndex: number | null;
   }) => {
     const room = getRoom(socket.data.roomCode);
     if (!room || !room.gameState) return;
@@ -261,13 +230,48 @@ export function registerHandlers(io: Server, socket: Socket): void {
     broadcastGameState(io, room.gameState);
     socket.emit('snap_result', { success: result.success, message: result.message });
     io.to(room.code).emit('snap_notification', { message: result.message, success: result.success });
-    io.to(room.code).emit('snap_animation', {
-      success: result.success,
-      snapperId: socket.data.playerId,
-      snapperCardIndex: data.myCardIndex,
-      targetPlayerId: data.targetPlayerId,
-      targetCardIndex: data.targetCardIndex,
-    });
+    if (result.success) {
+      io.to(room.code).emit('snap_animation', {
+        success: true,
+        snapperId: socket.data.playerId,
+        snapperCardIndex: data.myCardIndex ?? -1,
+        targetPlayerId: data.targetPlayerId,
+        targetCardIndex: data.targetCardIndex,
+      });
+    }
+
+    // Auto-timeout: if snapper doesn't pick a card to give within 10s, apply penalty
+    if (result.success && data.targetPlayerId !== null && data.myCardIndex === null) {
+      const playerId = socket.data.playerId;
+      setTimeout(() => {
+        const r = getRoom(socket.data.roomCode);
+        if (!r?.gameState?.pendingSnapExchange) return;
+        if (r.gameState.pendingSnapExchange.snapperId !== playerId) return;
+        // Force-resolve: give random card (first card)
+        const snapper = r.gameState.players.find(p => p.id === playerId);
+        if (!snapper || snapper.hand.length === 0) {
+          r.gameState = { ...r.gameState, pendingSnapExchange: undefined };
+          broadcastGameState(io, r.gameState);
+          return;
+        }
+        const giveResult = giveSnapCard(r.gameState, playerId, 0);
+        r.gameState = giveResult.state;
+        broadcastGameState(io, r.gameState);
+      }, 10000);
+    }
+  });
+
+  // Complete an opponent snap by picking which card to give away
+  socket.on('snap_give_card', (data: { myCardIndex: number }) => {
+    const room = getRoom(socket.data.roomCode);
+    if (!room || !room.gameState) return;
+
+    const result = giveSnapCard(room.gameState, socket.data.playerId, data.myCardIndex);
+    room.gameState = result.state;
+    broadcastGameState(io, room.gameState);
+    if (!result.success) {
+      socket.emit('snap_result', { success: false, message: result.message });
+    }
   });
 
   // Ability action

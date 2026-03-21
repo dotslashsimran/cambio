@@ -280,10 +280,12 @@ export function reserveSnap(
 // Snap can be attempted any time during playing/last_turns by double-clicking a card.
 // targetPlayerId=null means snapping own card; otherwise snapping an opponent's card.
 // myCardIndex is the card the snapper gives away (only used for opponent snaps).
+// For opponent snaps, pass myCardIndex=null to trigger two-phase flow: card is immediately
+// snatched and sent to discard, then giveSnapCard() must be called to complete the exchange.
 export function snap(
   state: ServerGameState,
   snappingPlayerId: string,
-  myCardIndex: number,
+  myCardIndex: number | null,
   targetPlayerId: string | null,
   targetCardIndex: number | null
 ): { state: ServerGameState; success: boolean; message: string } {
@@ -312,7 +314,7 @@ export function snap(
 
   if (targetPlayerId === null) {
     // Snapping own card
-    if (myCardIndex < 0 || myCardIndex >= snapper.hand.length) {
+    if (myCardIndex === null || myCardIndex < 0 || myCardIndex >= snapper.hand.length) {
       return { state: applyPenalty(state, snappingPlayerId), success: false, message: `${snapper.name} snapped wrong — penalty card!` };
     }
     const myCard = snapper.hand[myCardIndex];
@@ -336,53 +338,74 @@ export function snap(
       return { state: { ...applyPenalty(state, snappingPlayerId), snapReservation: undefined }, success: false, message: `${snapper.name} snapped wrong — penalty card!` };
     }
 
-    // Block if another player holds an active reservation on this card
-    const res = state.snapReservation;
-    if (
-      res &&
-      res.expiresAt > Date.now() &&
-      res.targetPlayerId === targetPlayerId &&
-      res.targetCardIndex === targetCardIndex &&
-      res.byPlayerId !== snappingPlayerId
-    ) {
-      return { state, success: false, message: `${snapper.name}: someone else is already snapping that card!` };
+    // Block if another snap exchange is already pending
+    if (state.pendingSnapExchange) {
+      return { state, success: false, message: 'A snap exchange is already in progress!' };
     }
 
     const target = state.players.find(p => p.id === targetPlayerId);
     if (!target || targetCardIndex < 0 || targetCardIndex >= target.hand.length) {
-      return { state: { ...applyPenalty(state, snappingPlayerId), snapReservation: undefined }, success: false, message: `${snapper.name} snapped wrong — penalty card!` };
+      return { state: applyPenalty(state, snappingPlayerId), success: false, message: `${snapper.name} snapped wrong — penalty card!` };
     }
     const targetCard = target.hand[targetCardIndex];
-    if (targetCard.value === discardValue) {
-      // Target's card → discard pile; snapper gives myCardIndex card to target
-      if (myCardIndex < 0 || myCardIndex >= snapper.hand.length) {
-        return { state: { ...applyPenalty(state, snappingPlayerId), snapReservation: undefined }, success: false, message: 'Invalid card to give — penalty!' };
-      }
-      const cardToGive = snapper.hand[myCardIndex];
-
-      // Snapper loses myCardIndex card
-      const newSnapperHand = snapper.hand.filter((_, i) => i !== myCardIndex);
-      const newSnapperKnown = remapKnownAfterRemove(snapper.knownCardIndices, myCardIndex);
-
-      // Target loses targetCardIndex card (goes to discard), gains cardToGive at end
-      const newTargetHand = target.hand.filter((_, i) => i !== targetCardIndex);
-      newTargetHand.push(cardToGive);
-      const newTargetKnown = remapKnownAfterRemove(target.knownCardIndices, targetCardIndex);
-
-      const updatedPlayers = state.players.map(p => {
-        if (p.id === snappingPlayerId) return { ...snapper, hand: newSnapperHand, knownCardIndices: newSnapperKnown };
-        if (p.id === targetPlayerId) return { ...target, hand: newTargetHand, knownCardIndices: newTargetKnown };
-        return p;
-      });
-      return {
-        state: { ...state, players: updatedPlayers, discardPile: [...state.discardPile, targetCard], snapReservation: undefined },
-        success: true,
-        message: `${snapper.name} snapped ${target.name}'s card!`,
-      };
-    } else {
-      return { state: { ...applyPenalty(state, snappingPlayerId), snapReservation: undefined }, success: false, message: `${snapper.name} snapped wrong — penalty card!` };
+    if (targetCard.value !== discardValue) {
+      return { state: applyPenalty(state, snappingPlayerId), success: false, message: `${snapper.name} snapped wrong — penalty card!` };
     }
+
+    // Phase 1: remove target's card to discard immediately; snapper must still give a card
+    const newTargetHand = target.hand.filter((_, i) => i !== targetCardIndex);
+    const newTargetKnown = remapKnownAfterRemove(target.knownCardIndices, targetCardIndex);
+    const updatedPlayers = state.players.map(p =>
+      p.id === targetPlayerId ? { ...target, hand: newTargetHand, knownCardIndices: newTargetKnown } : p
+    );
+    return {
+      state: {
+        ...state,
+        players: updatedPlayers,
+        discardPile: [...state.discardPile, targetCard],
+        snapReservation: undefined,
+        pendingSnapExchange: { snapperId: snappingPlayerId, targetPlayerId },
+      },
+      success: true,
+      message: `${snapper.name} snapped ${target.name}'s card!`,
+    };
   }
+}
+
+// Phase 2 of opponent snap: snapper picks which card to give to the target.
+export function giveSnapCard(
+  state: ServerGameState,
+  snappingPlayerId: string,
+  myCardIndex: number
+): { state: ServerGameState; success: boolean; message: string } {
+  const exchange = state.pendingSnapExchange;
+  if (!exchange || exchange.snapperId !== snappingPlayerId) {
+    return { state, success: false, message: 'No pending snap exchange for you' };
+  }
+
+  const snapper = state.players.find(p => p.id === snappingPlayerId);
+  const target = state.players.find(p => p.id === exchange.targetPlayerId);
+  if (!snapper || !target) return { state: { ...state, pendingSnapExchange: undefined }, success: false, message: 'Player not found' };
+  if (myCardIndex < 0 || myCardIndex >= snapper.hand.length) {
+    return { state: { ...applyPenalty(state, snappingPlayerId), pendingSnapExchange: undefined }, success: false, message: 'Invalid card index' };
+  }
+
+  const cardToGive = snapper.hand[myCardIndex];
+  const newSnapperHand = snapper.hand.filter((_, i) => i !== myCardIndex);
+  const newSnapperKnown = remapKnownAfterRemove(snapper.knownCardIndices, myCardIndex);
+  const newTargetHand = [...target.hand, cardToGive];
+
+  const updatedPlayers = state.players.map(p => {
+    if (p.id === snappingPlayerId) return { ...snapper, hand: newSnapperHand, knownCardIndices: newSnapperKnown };
+    if (p.id === exchange.targetPlayerId) return { ...target, hand: newTargetHand };
+    return p;
+  });
+
+  return {
+    state: { ...state, players: updatedPlayers, pendingSnapExchange: undefined },
+    success: true,
+    message: `${snapper.name} gave a card to ${target.name}`,
+  };
 }
 
 function remapKnownAfterRemove(known: Set<number>, removedIndex: number): Set<number> {
@@ -809,5 +832,6 @@ export function buildClientState(state: ServerGameState, forPlayerId: string): C
     lastSwap: state.lastSwap,
     lastReplace: state.lastReplace,
     snapWindowEndsAt: state.snapWindowEndsAt,
+    pendingSnapExchange: state.pendingSnapExchange,
   };
 }

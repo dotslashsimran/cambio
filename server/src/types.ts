@@ -67,6 +67,11 @@ export interface SnapReservation {
   expiresAt: number;
 }
 
+export interface PendingSnapExchange {
+  snapperId: string;
+  targetPlayerId: string;
+}
+
 export interface ServerGameState {
   id: string;
   roomCode: string;
@@ -84,6 +89,7 @@ export interface ServerGameState {
   lastReplace?: ReplaceInfo;
   snapReservation?: SnapReservation;
   snapWindowEndsAt?: number;
+  pendingSnapExchange?: PendingSnapExchange;
 }
 
 // ---- Client-facing types ----
@@ -128,6 +134,8 @@ export interface ClientGameState {
   canCallCambio: boolean;
   lastSwap?: SwapInfo;
   lastReplace?: ReplaceInfo;
+  snapWindowEndsAt?: number;
+  pendingSnapExchange?: { snapperId: string; targetPlayerId: string };
 }
 
 export interface Room {

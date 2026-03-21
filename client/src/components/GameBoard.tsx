@@ -17,12 +17,6 @@ interface GameBoardProps {
   onToggleDark: () => void;
 }
 
-interface PendingOpponentSnap {
-  targetPlayerId: string;
-  targetCardIndex: number;
-  targetPlayerName: string;
-}
-
 interface SnapAnimation {
   success: boolean;
   snapperId: string;
@@ -41,12 +35,10 @@ export default function GameBoard({ gameState, myPlayerId, roomCode, chatMessage
   const [chatInput, setChatInput] = useState('');
   const [tempRevealedCards, setTempRevealedCards] = useState<Record<number, ClientCard>>({});
   const [peekedIndices, setPeekedIndices] = useState<Set<number>>(new Set());
-  const [pendingOpponentSnap, setPendingOpponentSnap] = useState<PendingOpponentSnap | null>(null);
   const [snapMessage, setSnapMessage] = useState<{ text: string; success: boolean } | null>(null);
   const [snapAnim, setSnapAnim] = useState<SnapAnimation | null>(null);
   const peekTimers = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
   const [snapCountdown, setSnapCountdown] = useState<number | null>(null);
-  const pendingSnapIntentRef = useRef<PendingOpponentSnap | null>(null);
 
   // ── Ability inline state ──────────────────────────────────────
   const [abilitySwapSel1, setAbilitySwapSel1] = useState<SwapSel | null>(null);
@@ -58,7 +50,8 @@ export default function GameBoard({ gameState, myPlayerId, roomCode, chatMessage
 
   const socket = getSocket();
 
-  const { phase, players, deckSize, discardPileTop, currentPlayerIndex, drawnCard, abilityState, cambioCalledBy, lastSwap, lastReplace } = gameState;
+  const { phase, players, deckSize, discardPileTop, currentPlayerIndex, drawnCard, abilityState, cambioCalledBy, lastSwap, lastReplace, pendingSnapExchange } = gameState;
+  const iGiveCard = pendingSnapExchange?.snapperId === myPlayerId;
 
   const me = players.find(p => p.id === myPlayerId)!;
   const opponents = players.filter(p => p.id !== myPlayerId);
@@ -259,31 +252,18 @@ export default function GameBoard({ gameState, myPlayerId, roomCode, chatMessage
       setTimeout(() => setSnapAnim(null), 900);
     };
 
-    const handleSnapIntentResult = ({ success, message }: { success: boolean; message: string }) => {
-      if (success && pendingSnapIntentRef.current) {
-        setPendingOpponentSnap(pendingSnapIntentRef.current);
-      } else if (!success) {
-        setSnapMessage({ text: message, success: false });
-        setTimeout(() => setSnapMessage(null), 2500);
-      }
-      pendingSnapIntentRef.current = null;
-    };
-
     socket.on('peek_reveal', handlePeekReveal);
     socket.on('snap_result', handleSnapResult);
     socket.on('snap_animation', handleSnapAnimation);
-    socket.on('snap_intent_result', handleSnapIntentResult);
     return () => {
       socket.off('peek_reveal', handlePeekReveal);
       socket.off('snap_result', handleSnapResult);
       socket.off('snap_animation', handleSnapAnimation);
-      socket.off('snap_intent_result', handleSnapIntentResult);
     };
   }, [socket]);
 
   useEffect(() => {
     setSelectedCardIndex(null);
-    setPendingOpponentSnap(null);
   }, [currentPlayerIndex, phase]);
 
   // Double-click my own card → snap attempt
@@ -305,20 +285,16 @@ export default function GameBoard({ gameState, myPlayerId, roomCode, chatMessage
       return;
     }
 
+    // Completing opponent snap — pick card to give away
+    if (iGiveCard) {
+      socket.emit('snap_give_card', { myCardIndex: index });
+      return;
+    }
+
     if (phase === 'peek') {
       if (!peekedIndices.has(index) && peekedIndices.size < 2) {
         socket.emit('peek_card', { cardIndex: index });
       }
-      return;
-    }
-
-    if (pendingOpponentSnap) {
-      socket.emit('snap', {
-        targetPlayerId: pendingOpponentSnap.targetPlayerId,
-        targetCardIndex: pendingOpponentSnap.targetCardIndex,
-        myCardIndex: index,
-      });
-      setPendingOpponentSnap(null);
       return;
     }
 
@@ -330,11 +306,10 @@ export default function GameBoard({ gameState, myPlayerId, roomCode, chatMessage
     }
   };
 
-  const handleOpponentCardDoubleClick = (playerId: string, playerName: string, cardIndex: number) => {
+  const handleOpponentCardDoubleClick = (playerId: string, _playerName: string, cardIndex: number) => {
     if (!canSnap) return;
     if (playerId === cambioCalledBy) return;
-    pendingSnapIntentRef.current = { targetPlayerId: playerId, targetCardIndex: cardIndex, targetPlayerName: playerName };
-    socket.emit('snap_intent', { targetPlayerId: playerId, targetCardIndex: cardIndex });
+    socket.emit('snap', { targetPlayerId: playerId, targetCardIndex: cardIndex, myCardIndex: null });
   };
 
   const handleDrawDeck = () => socket.emit('draw_card', { source: 'deck' });
@@ -358,11 +333,12 @@ export default function GameBoard({ gameState, myPlayerId, roomCode, chatMessage
   const swapHintText = () => {
     if (!isSwapStep) return '';
     if (abilityStep === 'jack_swap_select_opp') {
-      if (!abilitySwapSel1) return 'Click your card';
-      if (!abilitySwapSel2) return "Click an opponent's card";
+      if (!abilitySwapSel1) return "Click any of your cards or an opponent's card";
+      const sel1IsMine = abilitySwapSel1.playerId === myPlayerId;
+      if (!abilitySwapSel2) return sel1IsMine ? "Now click an opponent's card" : "Now click one of your cards";
       return 'Ready!';
     }
-    if (!abilitySwapSel1) return 'Click the 1st card';
+    if (!abilitySwapSel1) return 'Click any two cards to swap';
     if (!abilitySwapSel2) return 'Click the 2nd card';
     return 'Ready!';
   };
@@ -412,11 +388,10 @@ export default function GameBoard({ gameState, myPlayerId, roomCode, chatMessage
         </div>
       )}
 
-      {/* Pending opponent snap prompt */}
-      {pendingOpponentSnap && (
+      {/* Pending snap exchange — snapper must give a card */}
+      {iGiveCard && (
         <div className="snap-pick-prompt">
-          <span>Snapping <strong>{pendingOpponentSnap.targetPlayerName}</strong>'s card — pick one of your cards to give them:</span>
-          <button className="btn btn-ghost btn-sm" onClick={() => { socket.emit('snap_intent_cancel'); setPendingOpponentSnap(null); }}>Cancel</button>
+          <span>Snap! Now click one of your cards to give away:</span>
         </div>
       )}
 
@@ -529,10 +504,7 @@ export default function GameBoard({ gameState, myPlayerId, roomCode, chatMessage
             )}
             {abilityStep === 'jack_swap_decide' && abilityState && (
               <>
-                {abilityState.peekedOwnCard && (
-                  <CardComponent card={abilityState.peekedOwnCard} size="md" disabled />
-                )}
-                <span>Swap this card with an opponent's?</span>
+                <span>Want to swap one of your cards with an opponent's?</span>
                 {hasValidOppForJack && (
                   <button className="btn btn-primary btn-sm" onClick={() => emitAbility('swap')}>Swap</button>
                 )}
@@ -541,14 +513,8 @@ export default function GameBoard({ gameState, myPlayerId, roomCode, chatMessage
                 </button>
               </>
             )}
-            {isSwapStep && abilityState && (
+            {isSwapStep && (
               <>
-                {abilityState.peekedOwnCard && (
-                  <CardComponent card={abilityState.peekedOwnCard} size="sm" disabled />
-                )}
-                {abilityState.peekedOppCard && (
-                  <CardComponent card={abilityState.peekedOppCard} size="sm" disabled />
-                )}
                 <span>{swapHintText()}</span>
                 {canConfirmSwap() && (
                   <button className="btn btn-primary btn-sm" onClick={emitAbilitySwap}>Swap!</button>
@@ -569,10 +535,10 @@ export default function GameBoard({ gameState, myPlayerId, roomCode, chatMessage
             )}
           </div>
         )}
-        {canSnap && !pendingOpponentSnap && !isAbilityMode && (
+        {canSnap && !iGiveCard && !isAbilityMode && (
           <div className="snap-hint">Double-click any card to snap it against the discard</div>
         )}
-        {pendingOpponentSnap && (
+        {iGiveCard && (
           <div className="snap-hint snap-hint-active">↓ Click one of your cards to give away</div>
         )}
 
@@ -581,9 +547,9 @@ export default function GameBoard({ gameState, myPlayerId, roomCode, chatMessage
           isMe={true}
           size="lg"
           selectedCardIndex={drawnCard ? selectedCardIndex : null}
-          highlightCards={!!pendingOpponentSnap}
+          highlightCards={iGiveCard}
           onCardClick={handleMyCardClick}
-          onCardDoubleClick={canSnap && !pendingOpponentSnap ? handleMyCardDoubleClick : undefined}
+          onCardDoubleClick={canSnap && !iGiveCard ? handleMyCardDoubleClick : undefined}
           tempRevealedCards={{ ...tempRevealedCards, ...abilityOwnReveal }}
           swappingCardIndices={lastSwap
             ? (lastSwap.p1Id === myPlayerId ? [lastSwap.p1CardIndex] : lastSwap.p2Id === myPlayerId ? [lastSwap.p2CardIndex] : [])
