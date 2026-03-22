@@ -19,7 +19,7 @@ const SUIT_MAP: Record<string, string> = {
 };
 
 function getCardUrl(card: ClientCard): string {
-  if (card.suit === 'joker') return `/cards/joker.png`;
+  if (card.suit === 'joker') return `/cards/joker.webp`;
   return `/cards/${card.rank}${SUIT_MAP[card.suit]}.png`;
 }
 
