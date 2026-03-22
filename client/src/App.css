@@ -1713,3 +1713,200 @@ select option:disabled { color: var(--text-muted); }
 }
 .htp-tip strong { color: rgba(255,255,255,0.9); }
 .htp-tip-icon { font-size: 1.1rem; flex-shrink: 0; margin-top: 1px; }
+
+/* ── Ability card rows (expandable) ─────────────────────────────── */
+.htp-ability-list { display: flex; flex-direction: column; gap: 8px; }
+
+.htp-ability-row {
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 10px;
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+
+.htp-ability-row-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: rgba(255,255,255,0.04);
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s;
+}
+.htp-ability-row-btn:hover { background: rgba(255,255,255,0.08); }
+
+.htp-ability-row-rank {
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid;
+  white-space: nowrap;
+  flex-shrink: 0;
+  min-width: 38px;
+  text-align: center;
+}
+
+.htp-ability-row-icon { font-size: 1.1rem; flex-shrink: 0; }
+
+.htp-ability-row-text { flex: 1; min-width: 0; }
+
+.htp-ability-row-label {
+  font-size: 0.88rem;
+  font-weight: 600;
+  margin-bottom: 2px;
+  transition: color 0.2s;
+}
+
+.htp-ability-row-desc {
+  font-size: 0.76rem;
+  color: rgba(255,255,255,0.5);
+  line-height: 1.4;
+}
+
+.htp-ability-row-chevron {
+  color: rgba(255,255,255,0.35);
+  flex-shrink: 0;
+  transition: transform 0.2s;
+}
+
+.htp-ability-demo-wrap {
+  border-top: 1px solid rgba(255,255,255,0.07);
+  padding: 16px 14px;
+  background: rgba(0,0,0,0.15);
+}
+
+/* ── Demo visuals ───────────────────────────────────────────────── */
+.htp-demo { display: flex; flex-direction: column; gap: 12px; }
+
+.demo-scene { display: flex; flex-direction: column; gap: 10px; }
+
+.demo-two-col {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.demo-two-col > div { flex: 1; min-width: 0; }
+
+.demo-player-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: rgba(255,255,255,0.4);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 6px;
+}
+
+.demo-hand {
+  display: flex;
+  gap: 6px;
+  flex-wrap: nowrap;
+}
+
+.demo-card-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.demo-card {
+  width: 48px;
+  height: 68px;
+  border-radius: 6px;
+  overflow: hidden;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.demo-card-face img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.demo-card-back {
+  background-color: var(--card-back);
+  background-image: radial-gradient(circle, rgba(255,255,255,0.4) 2px, transparent 2px);
+  background-size: 8px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+.demo-card-back-heart {
+  font-size: 1.2rem;
+  opacity: 0.5;
+}
+
+.demo-card-glow {
+  box-shadow: 0 0 0 2px rgba(255,255,255,0.8), 0 0 12px rgba(255,255,255,0.4);
+}
+
+.demo-card-label {
+  font-size: 0.64rem;
+  color: rgba(255,255,255,0.55);
+  text-align: center;
+  max-width: 56px;
+  line-height: 1.3;
+}
+
+.demo-then {
+  font-size: 0.75rem;
+  color: rgba(255,255,255,0.4);
+  text-align: center;
+  padding: 4px 0;
+}
+
+.demo-choice-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.demo-choice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.demo-choice-label {
+  font-size: 0.7rem;
+  color: rgba(255,255,255,0.4);
+  margin-top: 4px;
+  text-align: center;
+}
+
+.demo-swap-arrow {
+  font-size: 1.3rem;
+  color: rgba(255,255,255,0.5);
+}
+
+.demo-or {
+  font-size: 0.75rem;
+  color: rgba(255,255,255,0.3);
+  font-style: italic;
+}
+
+.demo-skip {
+  font-size: 0.8rem;
+  color: rgba(255,255,255,0.35);
+  padding: 6px 14px;
+  border: 1px dashed rgba(255,255,255,0.2);
+  border-radius: 6px;
+}
+
+.demo-note {
+  font-size: 0.76rem;
+  color: rgba(255,255,255,0.5);
+  line-height: 1.5;
+  margin: 0;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  padding-top: 10px;
+}

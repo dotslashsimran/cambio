@@ -1,12 +1,209 @@
-import React, { useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 
 interface HowToPlayProps {
   onClose: () => void;
 }
 
-const ABILITY_CARDS = [
+type AbilityKey = '7-8' | '9-10' | 'J' | 'Q' | 'K';
+
+function DemoCard({
+  rank,
+  suit,
+  faceDown = false,
+  glow = false,
+  label,
+}: {
+  rank?: string;
+  suit?: string;
+  faceDown?: boolean;
+  glow?: boolean;
+  label?: string;
+}) {
+  return (
+    <div className="demo-card-wrap">
+      {faceDown ? (
+        <div className={`demo-card demo-card-back ${glow ? 'demo-card-glow' : ''}`}>
+          <span className="demo-card-back-heart">♥</span>
+        </div>
+      ) : (
+        <div className={`demo-card demo-card-face ${glow ? 'demo-card-glow' : ''}`}>
+          <img src={`/cards/${rank}${suit}.png`} alt={`${rank}${suit}`} draggable={false} />
+        </div>
+      )}
+      {label && <div className="demo-card-label">{label}</div>}
+    </div>
+  );
+}
+
+function AbilityDemo({ abilityKey }: { abilityKey: AbilityKey }) {
+  switch (abilityKey) {
+    case '7-8':
+      return (
+        <div className="htp-demo">
+          <div className="demo-scene">
+            <div className="demo-player-label">Your hand</div>
+            <div className="demo-hand">
+              <DemoCard faceDown />
+              <DemoCard faceDown />
+              <DemoCard rank="7" suit="H" glow label="👁 only you see this" />
+              <DemoCard faceDown />
+            </div>
+          </div>
+          <p className="demo-note">
+            Pick any one of your own face-down cards to secretly peek at. No one else sees it.
+          </p>
+        </div>
+      );
+
+    case '9-10':
+      return (
+        <div className="htp-demo">
+          <div className="demo-scene">
+            <div className="demo-player-label">Opponent's hand</div>
+            <div className="demo-hand">
+              <DemoCard faceDown />
+              <DemoCard rank="9" suit="S" glow label="🔍 you peek" />
+              <DemoCard faceDown />
+              <DemoCard faceDown />
+            </div>
+          </div>
+          <p className="demo-note">
+            Pick any opponent's card to secretly peek at. They don't know which card you saw.
+          </p>
+        </div>
+      );
+
+    case 'J':
+      return (
+        <div className="htp-demo">
+          <div className="demo-scene">
+            <div className="demo-two-col">
+              <div>
+                <div className="demo-player-label">Your hand</div>
+                <div className="demo-hand">
+                  <DemoCard faceDown />
+                  <DemoCard rank="2" suit="C" glow label="👁 peek yours" />
+                  <DemoCard faceDown />
+                  <DemoCard faceDown />
+                </div>
+              </div>
+              <div>
+                <div className="demo-player-label">Opponent's hand</div>
+                <div className="demo-hand">
+                  <DemoCard faceDown />
+                  <DemoCard faceDown label="swap target?" />
+                  <DemoCard faceDown />
+                  <DemoCard faceDown />
+                </div>
+              </div>
+            </div>
+            <div className="demo-then">↓ then decide…</div>
+            <div className="demo-choice-row">
+              <div className="demo-choice">
+                <DemoCard rank="2" suit="C" />
+                <div className="demo-swap-arrow">⇄</div>
+                <DemoCard faceDown />
+                <div className="demo-choice-label">swap it</div>
+              </div>
+              <div className="demo-or">or</div>
+              <div className="demo-choice">
+                <div className="demo-skip">skip</div>
+              </div>
+            </div>
+          </div>
+          <p className="demo-note">
+            Peek one of your cards, then choose whether to swap it with any opponent's card — or just skip the swap.
+          </p>
+        </div>
+      );
+
+    case 'Q':
+      return (
+        <div className="htp-demo">
+          <div className="demo-scene">
+            <div className="demo-two-col">
+              <div>
+                <div className="demo-player-label">Your hand</div>
+                <div className="demo-hand">
+                  <DemoCard faceDown />
+                  <DemoCard rank="A" suit="H" label="your card" />
+                  <DemoCard faceDown />
+                  <DemoCard faceDown />
+                </div>
+              </div>
+              <div>
+                <div className="demo-player-label">Opponent's hand</div>
+                <div className="demo-hand">
+                  <DemoCard faceDown />
+                  <DemoCard rank="K" suit="S" glow label="👁 peek first" />
+                  <DemoCard faceDown />
+                  <DemoCard faceDown />
+                </div>
+              </div>
+            </div>
+            <div className="demo-then">↓ then swap any two cards…</div>
+            <div className="demo-choice-row">
+              <div className="demo-choice">
+                <DemoCard rank="A" suit="H" label="yours" />
+                <div className="demo-swap-arrow">⇄</div>
+                <DemoCard rank="K" suit="S" label="their 13!" />
+              </div>
+            </div>
+          </div>
+          <p className="demo-note">
+            Peek any opponent's card first, then swap any two cards anywhere on the table — yours, theirs, or any mix.
+          </p>
+        </div>
+      );
+
+    case 'K':
+      return (
+        <div className="htp-demo">
+          <div className="demo-scene">
+            <div className="demo-two-col">
+              <div>
+                <div className="demo-player-label">Your hand</div>
+                <div className="demo-hand">
+                  <DemoCard faceDown />
+                  <DemoCard rank="K" suit="H" glow label="👁 -1! keep it" />
+                  <DemoCard faceDown />
+                  <DemoCard faceDown />
+                </div>
+              </div>
+              <div>
+                <div className="demo-player-label">Opponent's hand</div>
+                <div className="demo-hand">
+                  <DemoCard rank="K" suit="S" glow label="👁 13! get rid" />
+                  <DemoCard faceDown />
+                  <DemoCard faceDown />
+                  <DemoCard faceDown />
+                </div>
+              </div>
+            </div>
+            <div className="demo-then">↓ then swap any two cards freely…</div>
+            <div className="demo-choice-row">
+              <div className="demo-choice">
+                <DemoCard rank="K" suit="S" label="their 13" />
+                <div className="demo-swap-arrow">⇄</div>
+                <DemoCard faceDown label="dump yours" />
+              </div>
+            </div>
+          </div>
+          <p className="demo-note">
+            The most powerful ability. Peek one of yours and one of theirs, then swap any two cards freely on the table.
+          </p>
+        </div>
+      );
+
+    default:
+      return null;
+  }
+}
+
+const ABILITY_CARDS: { key: AbilityKey; ranks: string; icon: string; color: string; label: string; desc: string }[] = [
   {
+    key: '7-8',
     ranks: '7 / 8',
     icon: '👁',
     color: '#7ec8e3',
@@ -14,6 +211,7 @@ const ABILITY_CARDS = [
     desc: 'Secretly look at one of your own face-down cards.',
   },
   {
+    key: '9-10',
     ranks: '9 / 10',
     icon: '🔍',
     color: '#f9c74f',
@@ -21,25 +219,28 @@ const ABILITY_CARDS = [
     desc: "Secretly look at one of any opponent's cards.",
   },
   {
+    key: 'J',
     ranks: 'J',
     icon: '🔄',
     color: '#f4845f',
     label: 'Peek & Maybe Swap',
-    desc: 'Peek one of your cards, then choose to swap it with any opponent\'s card — or skip.',
+    desc: "Peek one of your cards, then choose to swap it with any opponent's card — or skip.",
   },
   {
+    key: 'Q',
     ranks: 'Q',
     icon: '⚡',
     color: '#c4aaec',
     label: 'Peek Opp & Swap',
-    desc: "Peek any opponent's card, then swap any two cards on the table (yours or others').",
+    desc: "Peek any opponent's card, then swap any two cards on the table.",
   },
   {
+    key: 'K',
     ranks: 'K',
     icon: '👑',
     color: '#90be6d',
     label: 'Peek Both & Swap',
-    desc: 'Peek one of your own AND one opponent\'s card, then swap any two cards freely.',
+    desc: "Peek one of your own AND one opponent's card, then swap any two cards freely.",
   },
 ];
 
@@ -54,7 +255,8 @@ const CARD_VALUES = [
 ];
 
 export default function HowToPlay({ onClose }: HowToPlayProps) {
-  // Close on Escape
+  const [selectedAbility, setSelectedAbility] = useState<AbilityKey | null>(null);
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', handler);
@@ -90,7 +292,6 @@ export default function HowToPlay({ onClose }: HowToPlayProps) {
             </p>
           </section>
 
-          {/* Divider */}
           <div className="htp-divider" />
 
           {/* Turn flow */}
@@ -128,17 +329,38 @@ export default function HowToPlay({ onClose }: HowToPlayProps) {
               <span className="htp-icon">✨</span> Ability Cards
             </div>
             <p className="htp-text" style={{ marginBottom: 16 }}>
-              Discarding certain ranks triggers a special power. Higher-value ability cards are riskier to keep but devastating when used.
+              Discarding certain ranks triggers a special power. Click any card below to see how it works.
             </p>
-            <div className="htp-abilities">
-              {ABILITY_CARDS.map(a => (
-                <div className="htp-ability-card" key={a.ranks} style={{ borderColor: a.color + '55', background: a.color + '12' }}>
-                  <div className="htp-ability-rank" style={{ color: a.color }}>{a.ranks}</div>
-                  <div className="htp-ability-icon">{a.icon}</div>
-                  <div className="htp-ability-label" style={{ color: a.color }}>{a.label}</div>
-                  <div className="htp-ability-desc">{a.desc}</div>
-                </div>
-              ))}
+            <div className="htp-ability-list">
+              {ABILITY_CARDS.map(a => {
+                const isOpen = selectedAbility === a.key;
+                return (
+                  <div key={a.key} className={`htp-ability-row ${isOpen ? 'htp-ability-row-open' : ''}`} style={{ borderColor: isOpen ? a.color + '88' : 'rgba(255,255,255,0.07)' }}>
+                    <button
+                      className="htp-ability-row-btn"
+                      onClick={() => setSelectedAbility(isOpen ? null : a.key)}
+                      style={{ color: isOpen ? a.color : undefined }}
+                    >
+                      <div className="htp-ability-row-rank" style={{ color: a.color, borderColor: a.color + '44', background: a.color + '15' }}>{a.ranks}</div>
+                      <div className="htp-ability-row-icon">{a.icon}</div>
+                      <div className="htp-ability-row-text">
+                        <div className="htp-ability-row-label" style={{ color: isOpen ? a.color : 'rgba(255,255,255,0.9)' }}>{a.label}</div>
+                        <div className="htp-ability-row-desc">{a.desc}</div>
+                      </div>
+                      <div className="htp-ability-row-chevron" style={{ transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                          <polyline points="6 9 12 15 18 9"/>
+                        </svg>
+                      </div>
+                    </button>
+                    {isOpen && (
+                      <div className="htp-ability-demo-wrap">
+                        <AbilityDemo abilityKey={a.key} />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </section>
 
