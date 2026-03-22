@@ -69,7 +69,7 @@ function AbilityDemo({ abilityKey }: { abilityKey: AbilityKey }) {
             </div>
           </div>
           <p className="demo-note">
-            Pick any opponent's card to secretly peek at. They don't know which card you saw.
+            Pick any opponent's card to peek at. They can see which card you chose — but not what's in it.
           </p>
         </div>
       );
