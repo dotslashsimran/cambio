@@ -14,16 +14,13 @@ interface CardComponentProps {
   abilityHighlight?: boolean;
 }
 
-const BASE = 'https://webisso.github.io/playing-cards/';
-
-const RANK_MAP: Record<string, string> = {
-  'A': 'ace', 'J': 'jack', 'Q': 'queen', 'K': 'king',
+const SUIT_MAP: Record<string, string> = {
+  'clubs': 'C', 'diamonds': 'D', 'hearts': 'H', 'spades': 'S',
 };
 
 function getCardUrl(card: ClientCard): string {
-  if (card.suit === 'joker') return `${BASE}png/joker_red.png`;
-  const rank = RANK_MAP[card.rank] ?? card.rank.toLowerCase();
-  return `${BASE}png/${rank}_of_${card.suit}.png`;
+  if (card.suit === 'joker') return `/cards/joker.png`;
+  return `/cards/${card.rank}${SUIT_MAP[card.suit]}.png`;
 }
 
 export default function CardComponent({
