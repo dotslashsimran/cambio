@@ -42,6 +42,10 @@ export function removePlayer(room: Room, socketId: string): void {
   room.players = room.players.filter(p => p.socketId !== socketId);
 }
 
+export function deleteRoom(code: string): void {
+  rooms.delete(code);
+}
+
 export function getAllRooms(): Map<string, Room> {
   return rooms;
 }

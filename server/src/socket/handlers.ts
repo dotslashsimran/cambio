@@ -1,6 +1,6 @@
 import { Server, Socket } from 'socket.io';
 import { v4 as uuidv4 } from 'uuid';
-import { createRoom, getRoom, addPlayer, removePlayer } from '../rooms';
+import { createRoom, getRoom, addPlayer, removePlayer, deleteRoom } from '../rooms';
 import {
   createGame,
   peekOwnCard,
@@ -51,8 +51,10 @@ function broadcastGameState(io: Server, state: ServerGameState): void {
 export function registerHandlers(io: Server, socket: Socket): void {
   // Create room
   socket.on('create_room', (data: { playerName: string }, callback: Function) => {
+    const playerName = String(data.playerName ?? '').trim().slice(0, 20);
+    if (!playerName) { callback({ error: 'Name is required' }); return; }
     const playerId = uuidv4();
-    const room = createRoom(playerId, data.playerName, socket.id);
+    const room = createRoom(playerId, playerName, socket.id);
     socket.data.playerId = playerId;
     socket.data.roomCode = room.code;
     socket.join(room.code);
@@ -68,6 +70,8 @@ export function registerHandlers(io: Server, socket: Socket): void {
 
   // Join room
   socket.on('join_room', (data: { roomCode: string; playerName: string }, callback: Function) => {
+    const playerName = String(data.playerName ?? '').trim().slice(0, 20);
+    if (!playerName) { callback({ success: false, error: 'Name is required' }); return; }
     const room = getRoom(data.roomCode.toUpperCase());
     if (!room) {
       callback({ success: false, error: 'Room not found' });
@@ -83,7 +87,7 @@ export function registerHandlers(io: Server, socket: Socket): void {
     }
 
     const playerId = uuidv4();
-    addPlayer(room, playerId, data.playerName, socket.id);
+    addPlayer(room, playerId, playerName, socket.id);
     socket.data.playerId = playerId;
     socket.data.roomCode = room.code;
     socket.join(room.code);
@@ -319,6 +323,11 @@ export function registerHandlers(io: Server, socket: Socket): void {
     if (!room) return;
 
     removePlayer(room, socket.id);
+
+    if (room.players.length === 0) {
+      deleteRoom(roomCode);
+      return;
+    }
 
     io.to(roomCode).emit('room_update', {
       players: room.players,

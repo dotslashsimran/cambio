@@ -1,5 +1,5 @@
 import { Card, ServerGameState, ServerPlayer, AbilityState, AbilityStep, ClientGameState, ClientPlayer, ClientCard, ClientAbilityState, SwapInfo, ReplaceInfo, SnapReservation } from '../types';
-import { createDeck } from './deck';
+import { createDeck, shuffle } from './deck';
 import { v4 as uuidv4 } from 'uuid';
 
 export function createGame(
@@ -125,7 +125,7 @@ export function drawCard(
       // Reshuffle discard pile except top card
       if (newDiscardPile.length <= 1) return { error: 'No cards available' };
       const top = newDiscardPile[newDiscardPile.length - 1];
-      const reshuffled = newDiscardPile.slice(0, -1).sort(() => Math.random() - 0.5);
+      const reshuffled = shuffle(newDiscardPile.slice(0, -1));
       newDeck = reshuffled;
       newDiscardPile = [top];
     }
