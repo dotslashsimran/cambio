@@ -322,11 +322,17 @@ export function registerHandlers(io: Server, socket: Socket): void {
     const room = getRoom(roomCode);
     if (!room) return;
 
+    const wasHost = room.hostId === socket.data.playerId;
     removePlayer(room, socket.id);
 
     if (room.players.length === 0) {
       deleteRoom(roomCode);
       return;
+    }
+
+    // Transfer host to next player if host left
+    if (wasHost) {
+      room.hostId = room.players[0].id;
     }
 
     io.to(roomCode).emit('room_update', {
