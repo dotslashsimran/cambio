@@ -12,6 +12,7 @@ interface GameBoardProps {
   gameState: ClientGameState;
   myPlayerId: string;
   roomCode: string;
+  hostId: string;
   chatMessages: Array<{ playerName: string; message: string; timestamp: number }>;
   darkMode: boolean;
   onToggleDark: () => void;
@@ -30,7 +31,7 @@ interface SwapSel {
   cardIndex: number;
 }
 
-export default function GameBoard({ gameState, myPlayerId, roomCode, chatMessages, darkMode, onToggleDark }: GameBoardProps) {
+export default function GameBoard({ gameState, myPlayerId, roomCode, hostId, chatMessages, darkMode, onToggleDark }: GameBoardProps) {
   const [selectedCardIndex, setSelectedCardIndex] = useState<number | null>(null);
   const [chatInput, setChatInput] = useState('');
   const [tempRevealedCards, setTempRevealedCards] = useState<Record<number, ClientCard>>({});
@@ -576,7 +577,7 @@ export default function GameBoard({ gameState, myPlayerId, roomCode, chatMessage
 
       {/* AbilityModal handled entirely inline */}
       <AbilityModal />
-      {phase === 'game_over' && <GameOver gameState={gameState} myPlayerId={myPlayerId} />}
+      {phase === 'game_over' && <GameOver gameState={gameState} myPlayerId={myPlayerId} hostId={hostId} />}
 
       {/* Chat sidebar */}
       <div className="chat-sidebar">

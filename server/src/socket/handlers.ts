@@ -295,6 +295,17 @@ export function registerHandlers(io: Server, socket: Socket): void {
     broadcastWithSnapWindow(io, room, result, wasLastTurns);
   });
 
+  // Restart game (host only)
+  socket.on('restart_game', () => {
+    const room = getRoom(socket.data.roomCode);
+    if (!room) return;
+    if (room.hostId !== socket.data.playerId) return;
+
+    room.gameState = null;
+    io.to(room.code).emit('game_reset');
+    io.to(room.code).emit('room_update', { players: room.players, hostId: room.hostId });
+  });
+
   // Chat message
   socket.on('chat_message', (data: { message: string }) => {
     const room = getRoom(socket.data.roomCode);

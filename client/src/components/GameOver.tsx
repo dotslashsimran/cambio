@@ -1,10 +1,12 @@
 import React from 'react';
 import { ClientGameState, ClientPlayer, ClientCard } from '../types';
+import { getSocket } from '../socket';
 import CardComponent from './CardComponent';
 
 interface GameOverProps {
   gameState: ClientGameState;
   myPlayerId: string;
+  hostId: string;
 }
 
 interface PlayerScore {
@@ -14,7 +16,7 @@ interface PlayerScore {
   isWinner: boolean;
 }
 
-export default function GameOver({ gameState, myPlayerId }: GameOverProps) {
+export default function GameOver({ gameState, myPlayerId, hostId }: GameOverProps) {
   const { players } = gameState;
 
   // Calculate scores (all cards should be revealed now)
@@ -35,9 +37,9 @@ export default function GameOver({ gameState, myPlayerId }: GameOverProps) {
   const sorted = [...scores].sort((a, b) => a.total - b.total);
   const winner = sorted[0];
 
-  const handlePlayAgain = () => {
-    window.location.reload();
-  };
+  const isHost = myPlayerId === hostId;
+  const handlePlayAgain = () => getSocket().emit('restart_game');
+  const handleLeave = () => window.location.reload();
 
   return (
     <div className="game-over-backdrop">
@@ -89,8 +91,17 @@ export default function GameOver({ gameState, myPlayerId }: GameOverProps) {
         </table>
 
         <div className="game-over-actions">
-          <button className="btn btn-primary btn-lg" onClick={handlePlayAgain}>
-            Play Again
+          {isHost ? (
+            <button className="btn btn-primary btn-lg" onClick={handlePlayAgain}>
+              Play Again
+            </button>
+          ) : (
+            <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.9rem' }}>
+              Waiting for host to restart...
+            </div>
+          )}
+          <button className="btn btn-secondary btn-lg" onClick={handleLeave} style={{ marginTop: 8 }}>
+            Leave
           </button>
         </div>
       </div>

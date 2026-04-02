@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { getSocket } from '../socket';
 import { RoomPlayer } from '../types';
 import HowToPlay from './HowToPlay';
@@ -24,6 +24,7 @@ export default function Lobby({ onJoinedRoom, roomPlayers, hostId, myPlayerId, r
   const [chatInput, setChatInput] = useState('');
   const [error, setError] = useState('');
   const [showHTP, setShowHTP] = useState(false);
+  const [copied, setCopied] = useState(false);
   const socket = getSocket();
 
   const handleCreateRoom = () => {
@@ -97,7 +98,15 @@ export default function Lobby({ onJoinedRoom, roomPlayers, hostId, myPlayerId, r
         <div className="lobby-panel" style={{ maxWidth: 520 }}>
           <div className="room-code-display">
             <div className="label">Room Code</div>
-            <div className="code">{roomCode}</div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+              <div className="code">{roomCode}</div>
+              <button
+                onClick={() => { navigator.clipboard.writeText(roomCode); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
+                style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', color: 'white', fontSize: '0.75rem' }}
+              >
+                {copied ? 'Copied!' : 'Copy'}
+              </button>
+            </div>
             <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)', marginTop: 4 }}>
               Share this code with friends
             </div>

@@ -58,6 +58,11 @@ export default function App() {
       setTimeout(() => setNotification(''), 3000);
     });
 
+    socket.on('game_reset', () => {
+      setGameState(null);
+      setAppPhase('lobby');
+    });
+
     return () => {
       socket.off('game_state');
       socket.off('room_update');
@@ -65,6 +70,7 @@ export default function App() {
       socket.off('snap_notification');
       socket.off('cambio_called');
       socket.off('error');
+      socket.off('game_reset');
     };
   }, []);
 
@@ -99,6 +105,7 @@ export default function App() {
           gameState={gameState}
           myPlayerId={myPlayerId}
           roomCode={roomCode}
+          hostId={hostId}
           chatMessages={chatMessages}
           darkMode={darkMode}
           onToggleDark={toggleDark}
